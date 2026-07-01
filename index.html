@@ -474,6 +474,17 @@ const RI = {
 };
 const uid = () => Math.random().toString(36).slice(2,9);
 const makeCode = () => Array.from(crypto.getRandomValues(new Uint8Array(9))).map(b=>b.toString(36).padStart(2,'0')).join('').slice(0,16);
+const ALPHA = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+const makeShortCode = () => Array.from(crypto.getRandomValues(new Uint8Array(6))).map(b=>ALPHA[b%ALPHA.length]).join('');
+function findRoomByShortCode(sc) {
+  const upper = sc.toUpperCase();
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!key.startsWith('mafia:r:')) continue;
+    try { const r = JSON.parse(localStorage.getItem(key)); if (r?.shortCode === upper) return r; } catch {}
+  }
+  return null;
+}
 const nameOf = (players, id) => players.find(p => p.id === id)?.name ?? null;
 
 /* ── Auto-assign roles ── */
@@ -705,12 +716,16 @@ function App() {
     setJoinLinkErr('');
     if (!nameInput.trim()) { setNameErr('Enter your name'); return; }
     const raw = joinLink.trim();
-    if (!raw) { setJoinLinkErr('Paste the invite link here'); return; }
+    if (!raw) { setJoinLinkErr('Enter a room code or paste the invite link'); return; }
+    let r = null;
     let code = null;
-    try { code = new URL(raw).searchParams.get('room'); } catch {}
-    if (!code) code = raw; // treat as bare token
-    const r = getRoom(code);
-    if (!r) { setJoinLinkErr('Link is invalid or the room no longer exists'); return; }
+    // 1. Try as full URL
+    try { code = new URL(raw).searchParams.get('room'); if (code) r = getRoom(code); } catch {}
+    // 2. Try as bare long token
+    if (!r && raw.length >= 8) { r = getRoom(raw); if (r) code = raw; }
+    // 3. Try as short code (6-char alpha)
+    if (!r) { r = findRoomByShortCode(raw); if (r) code = r.code; }
+    if (!r || !code) { setJoinLinkErr('Room not found — check the code or link'); return; }
     if (r.phase !== 'lobby') { setJoinLinkErr('That game has already started'); return; }
     if (r.players.length >= 10) { setJoinLinkErr('Room is full (10 max)'); return; }
     if (r.players.some(p => p.name.toLowerCase() === nameInput.trim().toLowerCase())) { setNameErr('Name already taken in this room'); return; }
@@ -727,9 +742,10 @@ function App() {
     setNameErr('');
     if (!nameInput.trim()) { setNameErr('Enter your name'); return; }
     const code = makeCode();
+    const shortCode = makeShortCode();
     const modId = myId;
     const r = {
-      code, modId, phase:'lobby', round:0, nightStep:0, nightScript:[],
+      code, shortCode, modId, phase:'lobby', round:0, nightStep:0, nightScript:[],
       players:[{id:modId, name:nameInput.trim(), role:null, alive:true, isMod:true}],
       nightActions:{mafiaTarget:null, doctorSave:null, detectiveCheck:null},
       detectiveResult:null, lastDeath:null, speakTick:0, speakText:'',
@@ -792,7 +808,7 @@ function App() {
         <p className="eyebrow" style={{marginBottom:6}}>Join a Room</p>
         <p className="muted" style={{fontSize:12,marginBottom:0}}>Paste the invite link sent by your host.</p>
         <input value={joinLink} onChange={e=>{setJoinLink(e.target.value);setJoinLinkErr('');}}
-          placeholder="Paste invite link here"
+          placeholder="Room code or invite link"
           onKeyDown={e=>e.key==='Enter'&&joinByPastedLink()}
           style={{marginTop:10,borderColor:joinLinkErr?'var(--red2)':''}}/>
         {joinLinkErr && <p style={{color:'var(--red2)',fontSize:11,marginTop:6,letterSpacing:.5}}>{joinLinkErr}</p>}
@@ -917,13 +933,17 @@ function ModLobby({room, upd, joinUrl, onVoice, onExit}) {
     <div className="wrap">
       <GameHeader onVoice={onVoice} onExit={onExit} label="Moderator"/>
 
-      {/* Invite */}
+      {/* Room code + invite */}
       <div className="card" style={{borderTop:'none',marginBottom:0}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
-          <p className="eyebrow">Private Invite Link</p>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+          <p className="eyebrow">Room Code</p>
           <span style={{fontSize:11,color:'var(--muted)',letterSpacing:1}}>{room.players.length}/10 players</span>
         </div>
-        <p className="muted" style={{fontSize:11,marginBottom:10,letterSpacing:.3}}>Share this link with your players. Only people with this link can join your room.</p>
+        <div style={{textAlign:'center',padding:'10px 0 18px',borderBottom:'1px solid var(--line)',marginBottom:18}}>
+          <div className="code" style={{fontSize:48,letterSpacing:20}}>{room.shortCode || '——'}</div>
+          <p className="muted" style={{fontSize:11,marginTop:6,letterSpacing:1}}>Players can type this code on the home screen</p>
+        </div>
+        <p className="eyebrow" style={{marginBottom:8}}>Or share invite link</p>
         <div className="link-box">{joinUrl}</div>
         <button className="btn-primary" style={{marginTop:10}} onClick={copyLink}>Copy Invite Link</button>
       </div>
