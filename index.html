@@ -1403,38 +1403,6 @@ function ModDay({room, upd, onVoice, onExit}) {
             )}
           </div>
 
-          {/* Round history — past rounds */}
-          {(room.roundHistory||[]).length > 1 && (
-            <div className="action-panel" style={{borderTop:'none',marginTop:0}}>
-              <div className="action-panel-head">
-                <h3>Round History</h3>
-              </div>
-              {[...(room.roundHistory||[])].reverse().slice(1).map(entry => (
-                <div key={entry.round} style={{borderBottom:'1px solid var(--line)',padding:'12px 20px'}}>
-                  <p className="eyebrow" style={{fontSize:9,marginBottom:8}}>Round {entry.round}</p>
-                  <div style={{display:'flex',flexDirection:'column',gap:6}}>
-                    <div style={{display:'flex',justifyContent:'space-between'}}>
-                      <span style={{fontSize:12,color:'var(--muted)',letterSpacing:.5}}>Eliminated</span>
-                      <span style={{fontSize:12,color:entry.death?'var(--red2)':'var(--muted)'}}>{entry.death||'No one'}</span>
-                    </div>
-                    <div style={{display:'flex',justifyContent:'space-between'}}>
-                      <span style={{fontSize:12,color:'var(--muted)',letterSpacing:.5}}>Doctor Saved</span>
-                      <span style={{fontSize:12,color:entry.saved?'var(--green)':'var(--muted)'}}>{entry.saved||'No one'}</span>
-                    </div>
-                    {entry.detectiveResult && (
-                      <div style={{display:'flex',justifyContent:'space-between'}}>
-                        <span style={{fontSize:12,color:'var(--muted)',letterSpacing:.5}}>Detective Intel</span>
-                        <span style={{fontSize:12,color:entry.detectiveResult.isMafia?'var(--red2)':'var(--green)'}}>
-                          {entry.detectiveResult.name} — {entry.detectiveResult.isMafia?'Mafia':'Not Mafia'}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
           {/* Discussion timer */}
           <div className="action-panel" style={{borderTop:'none',marginTop:0}}>
             <div className="action-panel-head">
@@ -1534,6 +1502,38 @@ function ModDay({room, upd, onVoice, onExit}) {
               </div>
             ))}
           </div>
+
+          {/* Round history — past rounds */}
+          {(room.roundHistory||[]).length > 1 && (
+            <div className="action-panel" style={{borderTop:'none',marginTop:0,marginBottom:0}}>
+              <div className="action-panel-head">
+                <h3>Round History</h3>
+              </div>
+              {[...(room.roundHistory||[])].reverse().slice(1).map(entry => (
+                <div key={entry.round} style={{borderBottom:'1px solid var(--line)',padding:'12px 20px'}}>
+                  <p className="eyebrow" style={{fontSize:9,marginBottom:8}}>Round {entry.round}</p>
+                  <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                    <div style={{display:'flex',justifyContent:'space-between'}}>
+                      <span style={{fontSize:12,color:'var(--muted)',letterSpacing:.5}}>Eliminated</span>
+                      <span style={{fontSize:12,color:entry.death?'var(--red2)':'var(--muted)'}}>{entry.death||'No one'}</span>
+                    </div>
+                    <div style={{display:'flex',justifyContent:'space-between'}}>
+                      <span style={{fontSize:12,color:'var(--muted)',letterSpacing:.5}}>Doctor Saved</span>
+                      <span style={{fontSize:12,color:entry.saved?'var(--green)':'var(--muted)'}}>{entry.saved||'No one'}</span>
+                    </div>
+                    {entry.detectiveResult && (
+                      <div style={{display:'flex',justifyContent:'space-between'}}>
+                        <span style={{fontSize:12,color:'var(--muted)',letterSpacing:.5}}>Detective Intel</span>
+                        <span style={{fontSize:12,color:entry.detectiveResult.isMafia?'var(--red2)':'var(--green)'}}>
+                          {entry.detectiveResult.name} — {entry.detectiveResult.isMafia?'Mafia':'Not Mafia'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </>
       )}
     </div>
