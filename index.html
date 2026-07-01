@@ -1120,9 +1120,10 @@ function ModNight({room, upd, onVoice, onExit}) {
           r.detectiveResult = cp ? {name:cp.name, isMafia:cp.role==='mafia'} : null;
           detectiveEntry = r.detectiveResult;
         }
+        const savedName = s ? (r.players.find(p=>p.id===s)?.name ?? null) : null;
         r.lastDeath = death;
         if (!r.roundHistory) r.roundHistory = [];
-        r.roundHistory.push({round: r.round, death, detectiveResult: detectiveEntry});
+        r.roundHistory.push({round: r.round, death, detectiveResult: detectiveEntry, saved: savedName});
         r.phase = 'day'; r.votes = {}; r.dayTimer = null;
         r.votingEnded = false; r.eliminatedThisRound = null;
         r.speakTick = (r.speakTick||0)+1;
@@ -1140,24 +1141,34 @@ function ModNight({room, upd, onVoice, onExit}) {
   const alreadyRevealed = room.detectiveResult && dcPlayer && room.detectiveResult.name === dcPlayer.name;
 
   // A step's role has no one left alive to act it out — the narration still plays
-  // (so the mafia can't infer who's dead from a skipped step), but nothing blocks progress.
+  // (so the mafia can't infer who's dead from a skipped step), but no one can confirm it.
   const roleDead = (
     (step.show === 'doctor'    && !players.some(p=>p.role==='doctor'&&p.alive)) ||
     (step.show === 'detective' && !players.some(p=>p.role==='detective'&&p.alive))
   );
 
-  // Block next until the relevant role has acted and confirmed
-  const nextBlocked = !roleDead && (
-    (step.show === 'mafia'     && !room.nightActions.mafiaTarget) ||
-    (step.show === 'doctor'    && !room.nightActions.doctorConfirmed) ||
-    (step.show === 'detective' && !room.nightActions.detectiveConfirmed)
-  );
-
+  // Hold the bluff for a fixed 10s instead of letting the moderator skip straight
+  // through — a step that resolves instantly would be as much of a tell as a
+  // missing one.
+  const [bluffCountdown, setBluffCountdown] = useState(10);
   useEffect(() => {
-    if (!roleDead || isLast) return;
-    const t = setTimeout(() => { next(); }, 10000);
-    return () => clearTimeout(t);
+    if (!roleDead) return;
+    setBluffCountdown(10);
+    const iv = setInterval(() => {
+      setBluffCountdown(c => Math.max(0, c - 1));
+    }, 1000);
+    return () => clearInterval(iv);
   }, [stepIdx, roleDead]);
+
+  // Block next until the relevant role has acted and confirmed (or, for a dead
+  // role, until the bluff hold has finished)
+  const nextBlocked = roleDead
+    ? bluffCountdown > 0
+    : (
+        (step.show === 'mafia'     && !room.nightActions.mafiaTarget) ||
+        (step.show === 'doctor'    && !room.nightActions.doctorConfirmed) ||
+        (step.show === 'detective' && !room.nightActions.detectiveConfirmed)
+      );
 
   return (
     <div className="wrap">
@@ -1268,14 +1279,16 @@ function ModNight({room, upd, onVoice, onExit}) {
           {isLast ? '☀ Wake the City' : 'Next Step →'}
         </button>
       </div>
-      {nextBlocked && (
+      {nextBlocked && !roleDead && (
         <p style={{textAlign:'center',fontSize:10,letterSpacing:2,color:'var(--muted)',textTransform:'uppercase',marginBottom:16}}>
           Waiting for {step.show} to confirm their action
         </p>
       )}
-      {roleDead && !isLast && (
-        <p style={{textAlign:'center',fontSize:10,letterSpacing:2,color:'var(--muted)',textTransform:'uppercase',marginBottom:16}}>
-          No living {step.show} — continuing automatically…
+      {roleDead && (
+        <p style={{textAlign:'center',fontSize:11,letterSpacing:1.5,color:bluffCountdown>0?'var(--gold)':'var(--muted)',textTransform:'uppercase',marginBottom:16}}>
+          {bluffCountdown > 0
+            ? `The ${step.show} is dead — hold for ${bluffCountdown}s so the mafia can't tell from the silence`
+            : `Hold complete — tap Next Step to continue`}
         </p>
       )}
 
@@ -1399,18 +1412,24 @@ function ModDay({room, upd, onVoice, onExit}) {
               {[...(room.roundHistory||[])].reverse().slice(1).map(entry => (
                 <div key={entry.round} style={{borderBottom:'1px solid var(--line)',padding:'12px 20px'}}>
                   <p className="eyebrow" style={{fontSize:9,marginBottom:8}}>Round {entry.round}</p>
-                  <div style={{display:'flex',justifyContent:'space-between',marginBottom:entry.detectiveResult?6:0}}>
-                    <span style={{fontSize:12,color:'var(--muted)',letterSpacing:.5}}>Eliminated</span>
-                    <span style={{fontSize:12,color:entry.death?'var(--red2)':'var(--muted)'}}>{entry.death||'No one'}</span>
-                  </div>
-                  {entry.detectiveResult && (
+                  <div style={{display:'flex',flexDirection:'column',gap:6}}>
                     <div style={{display:'flex',justifyContent:'space-between'}}>
-                      <span style={{fontSize:12,color:'var(--muted)',letterSpacing:.5}}>Detective Intel</span>
-                      <span style={{fontSize:12,color:entry.detectiveResult.isMafia?'var(--red2)':'var(--green)'}}>
-                        {entry.detectiveResult.name} — {entry.detectiveResult.isMafia?'Mafia':'Not Mafia'}
-                      </span>
+                      <span style={{fontSize:12,color:'var(--muted)',letterSpacing:.5}}>Eliminated</span>
+                      <span style={{fontSize:12,color:entry.death?'var(--red2)':'var(--muted)'}}>{entry.death||'No one'}</span>
                     </div>
-                  )}
+                    <div style={{display:'flex',justifyContent:'space-between'}}>
+                      <span style={{fontSize:12,color:'var(--muted)',letterSpacing:.5}}>Doctor Saved</span>
+                      <span style={{fontSize:12,color:entry.saved?'var(--green)':'var(--muted)'}}>{entry.saved||'No one'}</span>
+                    </div>
+                    {entry.detectiveResult && (
+                      <div style={{display:'flex',justifyContent:'space-between'}}>
+                        <span style={{fontSize:12,color:'var(--muted)',letterSpacing:.5}}>Detective Intel</span>
+                        <span style={{fontSize:12,color:entry.detectiveResult.isMafia?'var(--red2)':'var(--green)'}}>
+                          {entry.detectiveResult.name} — {entry.detectiveResult.isMafia?'Mafia':'Not Mafia'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
