@@ -523,6 +523,20 @@ function autoAssignRoles(players) {
   return Object.fromEntries(nonMod.map((p, i) => [p.id, roles[i]]));
 }
 
+function assignRolesWithCounts(players, counts) {
+  const nonMod = players.filter(p => !p.isMod);
+  const roles = [];
+  for (let i = 0; i < (counts.mafia||0); i++) roles.push('mafia');
+  for (let i = 0; i < (counts.doctor||0); i++) roles.push('doctor');
+  for (let i = 0; i < (counts.detective||0); i++) roles.push('detective');
+  while (roles.length < nonMod.length) roles.push('villager');
+  for (let i = roles.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [roles[i], roles[j]] = [roles[j], roles[i]];
+  }
+  return Object.fromEntries(nonMod.map((p, i) => [p.id, roles[i]]));
+}
+
 /* ── Timer helpers ── */
 function timerRemaining(timer) {
   if (!timer?.startAt) return null;
@@ -901,8 +915,9 @@ function ModView({room, myId, upd, joinUrl, onVoice, onExit}) {
 /* ── Moderator Lobby ── */
 function ModLobby({room, upd, joinUrl, onVoice, onExit}) {
   const nonMod = room.players.filter(p => !p.isMod);
-  const [useAuto, setUseAuto] = useState(false);
+  const [useAuto, setUseAuto] = useState(true);
   const [roles, setRoles] = useState(() => Object.fromEntries(nonMod.map(p => [p.id, p.role || ''])));
+  const [customCounts, setCustomCounts] = useState(() => getRoleCounts(nonMod.length));
 
   useEffect(() => {
     setRoles(prev => {
@@ -910,23 +925,29 @@ function ModLobby({room, upd, joinUrl, onVoice, onExit}) {
       room.players.forEach(p => { if (!p.isMod && !(p.id in next)) next[p.id] = ''; });
       return next;
     });
+    setCustomCounts(getRoleCounts(nonMod.length));
   }, [room.players.length]);
 
-  const autoCounts = getRoleCounts(nonMod.length);
+  const villagerCount = Math.max(0, nonMod.length - (customCounts.mafia||0) - (customCounts.doctor||0) - (customCounts.detective||0));
   const manualCounts = Object.values(roles).reduce((a,r) => { if(r) a[r]=(a[r]||0)+1; return a; }, {});
   const allManualAssigned = nonMod.length > 0 && nonMod.every(p => roles[p.id]);
   const manualMafiaOk = (manualCounts.mafia||0) >= 1;
-  const canStart = nonMod.length >= 1 && (useAuto ? !!autoCounts.mafia : (allManualAssigned && manualMafiaOk));
+  const canStart = nonMod.length >= 1 && (useAuto ? (customCounts.mafia||0) >= 1 && villagerCount >= 0 : (allManualAssigned && manualMafiaOk));
+
+  function adjustCount(role, delta) {
+    setCustomCounts(prev => {
+      const next = {...prev, [role]: Math.max(role==='mafia'?1:0, (prev[role]||0) + delta)};
+      const newVillagers = nonMod.length - (next.mafia||0) - (next.doctor||0) - (next.detective||0);
+      if (newVillagers < 0) return prev;
+      return next;
+    });
+  }
 
   function startGame() {
     if (!canStart) return;
     upd(r => {
-      let finalRoles;
-      if (useAuto) {
-        finalRoles = autoAssignRoles(r.players);
-      } else {
-        finalRoles = roles;
-      }
+      const finalCounts = useAuto ? {...customCounts, villager: villagerCount} : null;
+      const finalRoles = useAuto ? assignRolesWithCounts(r.players, finalCounts) : roles;
       r.players = r.players.map(p => p.isMod ? p : {...p, role: finalRoles[p.id]});
       const hasDoc = Object.values(finalRoles).includes('doctor');
       const hasDet = Object.values(finalRoles).includes('detective');
@@ -941,11 +962,10 @@ function ModLobby({room, upd, joinUrl, onVoice, onExit}) {
 
   function copyLink() { navigator.clipboard.writeText(joinUrl).catch(()=>{}); }
 
-  const ROLE_META = [
-    {key:'mafia',    emoji:'🔪', label:'Mafia',     color:'var(--red2)'},
-    {key:'doctor',   emoji:'💉', label:'Doctor',    color:'var(--green)'},
-    {key:'detective',emoji:'🔍', label:'Detective', color:'var(--gold)'},
-    {key:'villager', emoji:'🧑', label:'Villager',  color:'var(--muted)'},
+  const ROLE_ROWS = [
+    {key:'mafia',     emoji:'🔪', label:'Mafia',     color:'var(--red2)',   min:1, canToggle:false},
+    {key:'doctor',    emoji:'💉', label:'Doctor',    color:'var(--green)',  min:0, canToggle:true},
+    {key:'detective', emoji:'🔍', label:'Detective', color:'var(--gold)',   min:0, canToggle:true},
   ];
 
   return (
@@ -973,8 +993,8 @@ function ModLobby({room, upd, joinUrl, onVoice, onExit}) {
           <p className="eyebrow">Assign Roles</p>
           {nonMod.length > 0 && (
             <div style={{display:'flex',gap:8}}>
-              <button className={`btn-gold-sm${useAuto?' active':''}`} onClick={()=>setUseAuto(true)}>Auto Assign</button>
-              {useAuto && <button className="btn-sm" onClick={()=>setUseAuto(false)}>Manual</button>}
+              <button className={`btn-gold-sm${useAuto?' active':''}`} onClick={()=>setUseAuto(true)}>Auto</button>
+              <button className={`btn-sm${!useAuto?' active':''}`} onClick={()=>setUseAuto(false)}>Manual</button>
             </div>
           )}
         </div>
@@ -982,22 +1002,43 @@ function ModLobby({room, upd, joinUrl, onVoice, onExit}) {
         {nonMod.length === 0 ? (
           <p className="muted" style={{fontSize:12}}>No players yet — share the invite link above.</p>
         ) : useAuto ? (
-          /* AUTO MODE — show role counts only, no per-player reveal */
+          /* AUTO MODE — customisable counts, villagers auto-adjust */
           <div>
-            <p className="muted" style={{fontSize:11,marginBottom:18,letterSpacing:.3}}>
-              Roles will be shuffled and assigned randomly when you start the game. The breakdown below is fixed — no peeking at who gets what.
+            <p className="muted" style={{fontSize:11,marginBottom:16,letterSpacing:.3}}>
+              Adjust the role counts. Villagers fill the remainder automatically. Roles are shuffled at game start — no one can see who gets what.
             </p>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:1,border:'1px solid var(--line)',marginBottom:4}}>
-              {ROLE_META.filter(rm => autoCounts[rm.key] > 0).map(rm => (
-                <div key={rm.key} style={{padding:'18px 20px',borderRight:'1px solid var(--line)',borderBottom:'1px solid var(--line)'}}>
-                  <div style={{fontSize:28,marginBottom:4}}>{rm.emoji}</div>
-                  <div style={{fontSize:32,fontFamily:'Playfair Display,serif',color:rm.color,lineHeight:1}}>{autoCounts[rm.key]}</div>
-                  <div style={{fontSize:10,letterSpacing:3,textTransform:'uppercase',color:'var(--muted)',marginTop:4}}>{rm.label}{autoCounts[rm.key]>1?'s':''}</div>
+            {ROLE_ROWS.map(rm => (
+              <div key={rm.key} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'14px 0',borderBottom:'1px solid var(--line)'}}>
+                <div style={{display:'flex',alignItems:'center',gap:12}}>
+                  <span style={{fontSize:22}}>{rm.emoji}</span>
+                  <div>
+                    <div style={{fontSize:13,color:rm.color,letterSpacing:1,textTransform:'uppercase',fontFamily:'Playfair Display,serif'}}>{rm.label}</div>
+                  </div>
                 </div>
-              ))}
+                <div style={{display:'flex',alignItems:'center',gap:0}}>
+                  <button onClick={()=>adjustCount(rm.key,-1)}
+                    style={{width:36,height:36,border:'1px solid var(--line)',background:'transparent',color:'var(--text)',fontSize:18,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}
+                    disabled={(customCounts[rm.key]||0) <= rm.min}>−</button>
+                  <span style={{width:40,textAlign:'center',fontFamily:'Playfair Display,serif',fontSize:22,color:rm.color}}>{customCounts[rm.key]||0}</span>
+                  <button onClick={()=>adjustCount(rm.key,1)}
+                    style={{width:36,height:36,border:'1px solid var(--line)',background:'transparent',color:'var(--text)',fontSize:18,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}
+                    disabled={villagerCount <= 0}>+</button>
+                </div>
+              </div>
+            ))}
+            {/* Villagers — derived, no controls */}
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'14px 0',borderBottom:'1px solid var(--line)'}}>
+              <div style={{display:'flex',alignItems:'center',gap:12}}>
+                <span style={{fontSize:22}}>🧑</span>
+                <div>
+                  <div style={{fontSize:13,color:'var(--muted)',letterSpacing:1,textTransform:'uppercase',fontFamily:'Playfair Display,serif'}}>Villager</div>
+                  <div style={{fontSize:10,color:'var(--muted)',marginTop:2,letterSpacing:.5}}>auto-calculated</div>
+                </div>
+              </div>
+              <span style={{fontFamily:'Playfair Display,serif',fontSize:22,color:'var(--muted)',paddingRight:4}}>{villagerCount}</span>
             </div>
-            <p className="muted" style={{fontSize:10,letterSpacing:1,marginTop:8}}>
-              {nonMod.length} players · roles shuffled at game start
+            <p className="muted" style={{fontSize:10,letterSpacing:1,marginTop:10}}>
+              {nonMod.length} players · {(customCounts.mafia||0) + (customCounts.doctor||0) + (customCounts.detective||0) + villagerCount} roles assigned
             </p>
           </div>
         ) : (
@@ -1047,6 +1088,17 @@ function ModNight({room, upd, onVoice, onExit}) {
       if (step.speak) speak(step.speak);
     }
   }, [stepIdx]);
+
+  function prev() {
+    if (stepIdx === 0) return;
+    upd(r => {
+      r.nightStep = stepIdx - 1;
+      const ps = r.nightScript[r.nightStep];
+      r.speakTick = (r.speakTick||0)+1;
+      r.speakText = ps?.speak || '';
+      return r;
+    });
+  }
 
   function next() {
     upd(r => {
@@ -1185,9 +1237,10 @@ function ModNight({room, upd, onVoice, onExit}) {
         </div>
       )}
 
-      <button className="btn-primary" onClick={next} style={{marginBottom:20}}>
-        {isLast ? '☀ Wake the City' : 'Next Step →'}
-      </button>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 2fr',gap:8,marginBottom:20}}>
+        <button className="btn-secondary" onClick={prev} disabled={stepIdx===0}>← Back</button>
+        <button className="btn-primary" onClick={next}>{isLast ? '☀ Wake the City' : 'Next Step →'}</button>
+      </div>
 
       {/* Players roster */}
       <p className="eyebrow" style={{marginBottom:10}}>Players</p>
