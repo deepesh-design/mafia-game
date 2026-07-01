@@ -487,6 +487,15 @@ function findRoomByShortCode(sc) {
 }
 const nameOf = (players, id) => players.find(p => p.id === id)?.name ?? null;
 
+function getRoleCounts(n) {
+  if (n <= 0) return {};
+  if (n === 1) return {mafia:1};
+  if (n === 2) return {mafia:1, villager:1};
+  const remaining = n - 2;
+  const mafiaCount = remaining <= 4 ? 1 : remaining <= 7 ? 2 : 3;
+  return {mafia:mafiaCount, doctor:1, detective:1, villager:n-2-mafiaCount};
+}
+
 /* ── Auto-assign roles ── */
 function autoAssignRoles(players) {
   const nonMod = players.filter(p => !p.isMod);
@@ -892,6 +901,7 @@ function ModView({room, myId, upd, joinUrl, onVoice, onExit}) {
 /* ── Moderator Lobby ── */
 function ModLobby({room, upd, joinUrl, onVoice, onExit}) {
   const nonMod = room.players.filter(p => !p.isMod);
+  const [useAuto, setUseAuto] = useState(false);
   const [roles, setRoles] = useState(() => Object.fromEntries(nonMod.map(p => [p.id, p.role || ''])));
 
   useEffect(() => {
@@ -902,25 +912,27 @@ function ModLobby({room, upd, joinUrl, onVoice, onExit}) {
     });
   }, [room.players.length]);
 
-  const counts = Object.values(roles).reduce((a,r) => { if(r) a[r]=(a[r]||0)+1; return a; }, {});
-  const allAssigned = nonMod.length > 0 && nonMod.every(p => roles[p.id]);
-  const mafiaOk = (counts.mafia||0) >= 1;
-
-  function randomize() {
-    if (nonMod.length === 0) return;
-    const assigned = autoAssignRoles(room.players);
-    setRoles(prev => ({...prev, ...assigned}));
-  }
+  const autoCounts = getRoleCounts(nonMod.length);
+  const manualCounts = Object.values(roles).reduce((a,r) => { if(r) a[r]=(a[r]||0)+1; return a; }, {});
+  const allManualAssigned = nonMod.length > 0 && nonMod.every(p => roles[p.id]);
+  const manualMafiaOk = (manualCounts.mafia||0) >= 1;
+  const canStart = nonMod.length >= 1 && (useAuto ? !!autoCounts.mafia : (allManualAssigned && manualMafiaOk));
 
   function startGame() {
-    if (!allAssigned || !mafiaOk) return;
+    if (!canStart) return;
     upd(r => {
-      r.players = r.players.map(p => p.isMod ? p : {...p, role: roles[p.id]});
-      const hasDoc = Object.values(roles).includes('doctor');
-      const hasDet = Object.values(roles).includes('detective');
+      let finalRoles;
+      if (useAuto) {
+        finalRoles = autoAssignRoles(r.players);
+      } else {
+        finalRoles = roles;
+      }
+      r.players = r.players.map(p => p.isMod ? p : {...p, role: finalRoles[p.id]});
+      const hasDoc = Object.values(finalRoles).includes('doctor');
+      const hasDet = Object.values(finalRoles).includes('detective');
       r.nightScript = buildScript(1, hasDoc, hasDet);
       r.phase = 'night'; r.round = 1; r.nightStep = 0;
-      r.nightActions = {mafiaTarget:null, doctorSave:null, detectiveCheck:null};
+      r.nightActions = {mafiaTarget:null, doctorSave:null, detectiveCheck:null, mafiaVotes:{}};
       r.detectiveResult = null; r.lastDeath = null; r.votes = {}; r.dayTimer = null;
       r.speakTick = 1; r.speakText = r.nightScript[0].speak;
       return r;
@@ -928,6 +940,13 @@ function ModLobby({room, upd, joinUrl, onVoice, onExit}) {
   }
 
   function copyLink() { navigator.clipboard.writeText(joinUrl).catch(()=>{}); }
+
+  const ROLE_META = [
+    {key:'mafia',    emoji:'🔪', label:'Mafia',     color:'var(--red2)'},
+    {key:'doctor',   emoji:'💉', label:'Doctor',    color:'var(--green)'},
+    {key:'detective',emoji:'🔍', label:'Detective', color:'var(--gold)'},
+    {key:'villager', emoji:'🧑', label:'Villager',  color:'var(--muted)'},
+  ];
 
   return (
     <div className="wrap">
@@ -952,38 +971,62 @@ function ModLobby({room, upd, joinUrl, onVoice, onExit}) {
       <div className="card" style={{borderTop:'none',marginBottom:16}}>
         <div className="section-head">
           <p className="eyebrow">Assign Roles</p>
-          <div style={{display:'flex',gap:10,alignItems:'center'}}>
-            <span style={{fontSize:11,color:'var(--muted)',letterSpacing:1}}>
-              {counts.mafia||0}🔪 {counts.doctor||0}💉 {counts.detective||0}🔍 {counts.villager||0}🧑
-            </span>
-            {nonMod.length > 0 && <button className="btn-gold-sm" onClick={randomize}>Auto Assign</button>}
-          </div>
+          {nonMod.length > 0 && (
+            <div style={{display:'flex',gap:8}}>
+              <button className={`btn-gold-sm${useAuto?' active':''}`} onClick={()=>setUseAuto(true)}>Auto Assign</button>
+              {useAuto && <button className="btn-sm" onClick={()=>setUseAuto(false)}>Manual</button>}
+            </div>
+          )}
         </div>
 
-        {nonMod.length === 0
-          ? <p className="muted" style={{fontSize:12}}>No players yet — share the invite link above.</p>
-          : room.players.map((p, i) => (
-            <div key={p.id} className="player-row">
-              <span className="player-num">{String(i+1).padStart(2,'0')}</span>
-              <span className="player-name">{p.name}</span>
-              {p.isMod
-                ? <span className="pill pill-mod">Moderator</span>
-                : <select className="role-select" value={roles[p.id]||''}
-                    onChange={e=>setRoles(r=>({...r,[p.id]:e.target.value}))}>
-                    <option value="">— pick role —</option>
-                    {ROLES.map(r => <option key={r} value={r}>{RI[r].emoji} {RI[r].label}</option>)}
-                  </select>}
+        {nonMod.length === 0 ? (
+          <p className="muted" style={{fontSize:12}}>No players yet — share the invite link above.</p>
+        ) : useAuto ? (
+          /* AUTO MODE — show role counts only, no per-player reveal */
+          <div>
+            <p className="muted" style={{fontSize:11,marginBottom:18,letterSpacing:.3}}>
+              Roles will be shuffled and assigned randomly when you start the game. The breakdown below is fixed — no peeking at who gets what.
+            </p>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:1,border:'1px solid var(--line)',marginBottom:4}}>
+              {ROLE_META.filter(rm => autoCounts[rm.key] > 0).map(rm => (
+                <div key={rm.key} style={{padding:'18px 20px',borderRight:'1px solid var(--line)',borderBottom:'1px solid var(--line)'}}>
+                  <div style={{fontSize:28,marginBottom:4}}>{rm.emoji}</div>
+                  <div style={{fontSize:32,fontFamily:'Playfair Display,serif',color:rm.color,lineHeight:1}}>{autoCounts[rm.key]}</div>
+                  <div style={{fontSize:10,letterSpacing:3,textTransform:'uppercase',color:'var(--muted)',marginTop:4}}>{rm.label}{autoCounts[rm.key]>1?'s':''}</div>
+                </div>
+              ))}
             </div>
-          ))
-        }
-
-        {!allAssigned && nonMod.length > 0 && (
-          <p className="muted" style={{marginTop:12,fontSize:11,letterSpacing:1}}>Assign a role to every player, or use Auto Assign.</p>
+            <p className="muted" style={{fontSize:10,letterSpacing:1,marginTop:8}}>
+              {nonMod.length} players · roles shuffled at game start
+            </p>
+          </div>
+        ) : (
+          /* MANUAL MODE — per-player role selects */
+          <div>
+            {room.players.map((p, i) => (
+              <div key={p.id} className="player-row">
+                <span className="player-num">{String(i+1).padStart(2,'0')}</span>
+                <span className="player-name">{p.name}</span>
+                {p.isMod
+                  ? <span className="pill pill-mod">Moderator</span>
+                  : <select className="role-select" value={roles[p.id]||''}
+                      onChange={e=>setRoles(r=>({...r,[p.id]:e.target.value}))}>
+                      <option value="">— pick role —</option>
+                      {ROLES.map(r => <option key={r} value={r}>{RI[r].emoji} {RI[r].label}</option>)}
+                    </select>}
+              </div>
+            ))}
+            {!allManualAssigned && (
+              <p className="muted" style={{marginTop:12,fontSize:11,letterSpacing:1}}>Assign a role to every player to continue.</p>
+            )}
+            {allManualAssigned && !manualMafiaOk && (
+              <p className="warn" style={{marginTop:12}}>⚠ At least one Mafia member is required.</p>
+            )}
+          </div>
         )}
-        {allAssigned && !mafiaOk && <p className="warn" style={{marginTop:12}}>⚠ At least one Mafia member is required.</p>}
 
-        <button className="btn-primary" disabled={!allAssigned||!mafiaOk} onClick={startGame}>
-          ▶ Start Game
+        <button className="btn-primary" disabled={!canStart} onClick={startGame} style={{marginTop:16}}>
+          ▶ Assign &amp; Start Game
         </button>
       </div>
     </div>
@@ -1056,20 +1099,35 @@ function ModNight({room, upd, onVoice, onExit}) {
       </div>
 
       {/* Mafia action panel */}
-      {step.show === 'mafia' && (
-        <div className="action-panel">
-          <div className="action-panel-head">
-            <h3>Mafia</h3>
-            <span className="ap-status">Choosing Target</span>
+      {step.show === 'mafia' && (()=>{
+        const mafiaMembers = players.filter(p=>p.role==='mafia'&&p.alive);
+        const mafiaVotes = room.nightActions.mafiaVotes || {};
+        const confirmed = room.nightActions.mafiaTarget;
+        const allVoted = mafiaMembers.length>0 && mafiaMembers.every(m=>mafiaVotes[m.id]);
+        const agreedId = allVoted && mafiaMembers.every(m=>mafiaVotes[m.id]===mafiaVotes[mafiaMembers[0].id]) ? mafiaVotes[mafiaMembers[0].id] : null;
+        return (
+          <div className="action-panel">
+            <div className="action-panel-head">
+              <h3>Mafia</h3>
+              <span className="ap-status">{confirmed ? 'Target Confirmed' : agreedId ? 'All Agreed' : 'Deliberating'}</span>
+            </div>
+            {mafiaMembers.map(m=>(
+              <div key={m.id} className="action-row">
+                <span className="action-label">{m.name}</span>
+                <span className={`action-value${mafiaVotes[m.id]?'':' is-none'}`}>
+                  {mafiaVotes[m.id] ? nameOf(room.players,mafiaVotes[m.id]) : 'Deciding…'}
+                </span>
+              </div>
+            ))}
+            <div className="action-row" style={{borderTop:'1px solid var(--line)'}}>
+              <span className="action-label">Confirmed Kill</span>
+              <span className={`action-value${confirmed?'':' is-none'}`}>
+                {confirmed ? nameOf(room.players,confirmed) : 'Not yet confirmed'}
+              </span>
+            </div>
           </div>
-          <div className="action-row">
-            <span className="action-label">Target</span>
-            <span className={`action-value${nameOf(room.players,room.nightActions.mafiaTarget)?'':' is-none'}`}>
-              {nameOf(room.players,room.nightActions.mafiaTarget) || 'None selected'}
-            </span>
-          </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Doctor action panel */}
       {step.show === 'doctor' && (
@@ -1182,7 +1240,7 @@ function ModDay({room, upd, onVoice, onExit}) {
       const hasDet = r.players.some(p=>p.role==='detective'&&p.alive);
       r.round = round; r.phase = 'night'; r.nightStep = 0;
       r.nightScript = buildScript(round, hasDoc, hasDet);
-      r.nightActions = {mafiaTarget:null,doctorSave:null,detectiveCheck:null};
+      r.nightActions = {mafiaTarget:null,doctorSave:null,detectiveCheck:null,mafiaVotes:{}};
       r.detectiveResult = null; r.votes = {}; r.dayTimer = null;
       r.speakTick = (r.speakTick||0)+1;
       r.speakText = r.nightScript[0].speak;
@@ -1377,22 +1435,75 @@ function PlayerNight({room, me, myId, upd, onExit}) {
   let action = null;
 
   if (me.role==='mafia' && show==='mafia') {
-    const myPick = room.nightActions.mafiaTarget;
+    const mafiaVotes = room.nightActions.mafiaVotes || {};
+    const aliveMafia = alive.filter(p=>p.role==='mafia');
     const targets = alive.filter(p=>p.role!=='mafia');
+    const myVote = mafiaVotes[myId] || null;
+    const confirmed = room.nightActions.mafiaTarget;
+    const allVoted = aliveMafia.length>0 && aliveMafia.every(m=>mafiaVotes[m.id]);
+    const agreedId = allVoted && aliveMafia.every(m=>mafiaVotes[m.id]===mafiaVotes[aliveMafia[0].id]) ? mafiaVotes[aliveMafia[0].id] : null;
+
+    function voteTarget(targetId) {
+      upd(r=>{
+        if (!r.nightActions.mafiaVotes) r.nightActions.mafiaVotes={};
+        if (r.nightActions.mafiaVotes[myId]===targetId) delete r.nightActions.mafiaVotes[myId];
+        else r.nightActions.mafiaVotes[myId]=targetId;
+        return r;
+      });
+    }
+    function confirmKill() {
+      upd(r=>{ r.nightActions.mafiaTarget=agreedId; return r; });
+    }
+
     action = (
       <div className="card" style={{borderTop:'none',padding:0,marginBottom:14}}>
         <div className="action-panel-head">
           <h3>Choose Your Target</h3>
           <span className="ap-status">Mafia Night</span>
         </div>
-        <div className="target-list" style={{border:'none',margin:0}}>
-          {targets.map(p => (
-            <button key={p.id} className={`target-btn${myPick===p.id?' selected':''}`} onClick={()=>pick('mafiaTarget',p.id)}>
-              {p.name}
-              {myPick===p.id && <span style={{float:'right',fontSize:10,letterSpacing:2,color:'var(--red2)'}}>SELECTED</span>}
+        {confirmed ? (
+          <div style={{padding:'20px 22px',textAlign:'center'}}>
+            <p className="eyebrow" style={{marginBottom:6,color:'var(--red2)'}}>Kill Confirmed</p>
+            <p style={{fontSize:20,fontFamily:'Playfair Display,serif'}}>{nameOf(room.players,confirmed)}</p>
+          </div>
+        ) : (
+          <div className="target-list" style={{border:'none',margin:0}}>
+            {targets.map(p => (
+              <button key={p.id} className={`target-btn${myVote===p.id?' selected':''}`}
+                onClick={()=>!confirmed&&voteTarget(p.id)}>
+                {p.name}
+                {myVote===p.id && <span style={{float:'right',fontSize:10,letterSpacing:2,color:'var(--red2)'}}>YOUR PICK</span>}
+              </button>
+            ))}
+          </div>
+        )}
+        {/* Other mafia votes */}
+        {aliveMafia.length > 1 && !confirmed && (
+          <div style={{borderTop:'1px solid var(--line)',padding:'14px 22px'}}>
+            <p className="eyebrow" style={{marginBottom:10,fontSize:9}}>Mafia Votes</p>
+            {aliveMafia.map(m=>(
+              <div key={m.id} style={{display:'flex',justifyContent:'space-between',marginBottom:6,fontSize:12}}>
+                <span style={{color:'var(--muted)',letterSpacing:.5}}>{m.id===myId?'You':m.name}</span>
+                <span style={{color:mafiaVotes[m.id]?'var(--text)':'var(--muted)',fontStyle:mafiaVotes[m.id]?'normal':'italic'}}>
+                  {mafiaVotes[m.id] ? nameOf(room.players,mafiaVotes[m.id]) : 'deciding…'}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+        {/* Confirm kill — only when all agree */}
+        {agreedId && !confirmed && (
+          <div className="action-footer">
+            <button className="btn-primary" style={{width:'100%',background:'var(--red2)',borderColor:'var(--red2)'}} onClick={confirmKill}>
+              🔪 Confirm Kill — {nameOf(room.players,agreedId)}
             </button>
-          ))}
-        </div>
+          </div>
+        )}
+        {!agreedId && !confirmed && allVoted && (
+          <div className="action-footer">
+            <p style={{fontSize:11,color:'var(--muted)',letterSpacing:.5,textAlign:'center'}}>No consensus yet — mafia must all vote for the same target</p>
+          </div>
+        )}
       </div>
     );
   } else if (me.role==='doctor' && show==='doctor') {
