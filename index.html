@@ -772,7 +772,7 @@ function App() {
       players:[{id:modId, name:nameInput.trim(), role:null, alive:true, isMod:true}],
       nightActions:{mafiaTarget:null, doctorSave:null, detectiveCheck:null, mafiaVotes:{}, doctorConfirmed:false, detectiveConfirmed:false},
       detectiveResult:null, lastDeath:null, speakTick:0, speakText:'',
-      votes:{}, dayTimer:null, roundHistory:[],
+      votes:{}, dayTimer:null, roundHistory:[], votingEnded:false, eliminatedThisRound:null,
     };
     saveRoom(r);
     sessionStorage.setItem('maf:mod:' + code, '1');
@@ -1124,6 +1124,7 @@ function ModNight({room, upd, onVoice, onExit}) {
         if (!r.roundHistory) r.roundHistory = [];
         r.roundHistory.push({round: r.round, death, detectiveResult: detectiveEntry});
         r.phase = 'day'; r.votes = {}; r.dayTimer = null;
+        r.votingEnded = false; r.eliminatedThisRound = null;
         r.speakTick = (r.speakTick||0)+1;
         r.speakText = death
           ? `The sun rises. Last night, ${death} was found dead.`
@@ -1300,7 +1301,10 @@ function ModDay({room, upd, onVoice, onExit}) {
     if (leaders.length > 1) return; // tie — do nothing, show message
     upd(r => {
       const pid = leaders[0].id;
+      const elimPlayer = r.players.find(p=>p.id===pid);
       r.players = r.players.map(p => p.id===pid ? {...p,alive:false} : p);
+      r.votingEnded = true;
+      r.eliminatedThisRound = elimPlayer ? elimPlayer.name : null;
       return r;
     });
   }
@@ -1322,6 +1326,7 @@ function ModDay({room, upd, onVoice, onExit}) {
       r.nightScript = buildScript(round, hasDoc, hasDet);
       r.nightActions = {mafiaTarget:null,doctorSave:null,detectiveCheck:null,mafiaVotes:{},doctorConfirmed:false,detectiveConfirmed:false};
       r.detectiveResult = null; r.votes = {}; r.dayTimer = null;
+      r.votingEnded = false; r.eliminatedThisRound = null;
       r.speakTick = (r.speakTick||0)+1;
       r.speakText = r.nightScript[0].speak;
       return r;
@@ -1412,46 +1417,60 @@ function ModDay({room, upd, onVoice, onExit}) {
             )}
           </div>
 
-          {/* Vote tally */}
+          {/* Vote tally / result */}
           <div className="action-panel" style={{borderTop:'none',marginTop:0}}>
             <div className="action-panel-head">
-              <h3>Live Vote Tally</h3>
-              <span className="ap-status">{Object.keys(votes).length} / {totalVoters} Voted</span>
+              <h3>{room.votingEnded ? 'Voting Result' : 'Live Vote Tally'}</h3>
+              {!room.votingEnded && <span className="ap-status">{Object.keys(votes).length} / {totalVoters} Voted</span>}
             </div>
-            {alivePlayers.length === 0
-              ? <div style={{padding:'14px 20px'}}><p className="muted">No alive players.</p></div>
-              : alivePlayers.map((p,i) => {
-                const vc = voteCounts[p.id] || 0;
-                const isLeader = leaders.includes(p) && maxVotes > 0;
-                const pct = totalVoters ? (vc/totalVoters)*100 : 0;
-                return (
-                  <div key={p.id} style={{padding:'12px 20px',borderBottom:i<alivePlayers.length-1?'1px solid var(--line)':'none'}}>
-                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                      <span style={{fontSize:14,color:isLeader?'var(--red2)':'var(--text)'}} className={isLeader?'vote-leading':''}>
-                        {p.name}
-                      </span>
-                      <span style={{fontSize:10,letterSpacing:2,color:isLeader?'var(--red2)':'var(--muted)',textTransform:'uppercase'}}>
-                        {vc} vote{vc!==1?'s':''}
-                      </span>
-                    </div>
-                    {vc > 0 && <div className="vote-bar" style={{width:`${pct}%`,marginTop:6}}/>}
-                  </div>
-                );
-              })
-            }
-            {/* End Voting footer */}
-            <div style={{padding:'14px 20px',borderTop:'1px solid var(--line)'}}>
-              {leaders.length > 1 && maxVotes > 0 && (
-                <p style={{fontSize:11,color:'var(--muted)',letterSpacing:.5,marginBottom:10,textAlign:'center'}}>
-                  Tie between {leaders.map(l=>l.name).join(' & ')} — resolve manually below
+            {room.votingEnded ? (
+              <div style={{padding:'22px 20px',textAlign:'center'}}>
+                <p className="eyebrow" style={{marginBottom:8}}>Eliminated by Vote</p>
+                <p style={{fontSize:22,fontFamily:'Playfair Display,serif',color:'var(--red2)'}}>
+                  {room.eliminatedThisRound || 'No one'}
                 </p>
-              )}
-              <button className="btn-primary" style={{width:'100%'}}
-                disabled={maxVotes===0 || leaders.length>1}
-                onClick={endVoting}>
-                ⚖ End Voting — Eliminate {leaders.length===1 ? leaders[0].name : '…'}
-              </button>
-            </div>
+                <button className="btn-primary" style={{marginTop:18}} onClick={beginNight}>
+                  ▶ Begin Night {room.round+1}
+                </button>
+              </div>
+            ) : (
+              <>
+                {alivePlayers.length === 0
+                  ? <div style={{padding:'14px 20px'}}><p className="muted">No alive players.</p></div>
+                  : alivePlayers.map((p,i) => {
+                    const vc = voteCounts[p.id] || 0;
+                    const isLeader = leaders.includes(p) && maxVotes > 0;
+                    const pct = totalVoters ? (vc/totalVoters)*100 : 0;
+                    return (
+                      <div key={p.id} style={{padding:'12px 20px',borderBottom:i<alivePlayers.length-1?'1px solid var(--line)':'none'}}>
+                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                          <span style={{fontSize:14,color:isLeader?'var(--red2)':'var(--text)'}} className={isLeader?'vote-leading':''}>
+                            {p.name}
+                          </span>
+                          <span style={{fontSize:10,letterSpacing:2,color:isLeader?'var(--red2)':'var(--muted)',textTransform:'uppercase'}}>
+                            {vc} vote{vc!==1?'s':''}
+                          </span>
+                        </div>
+                        {vc > 0 && <div className="vote-bar" style={{width:`${pct}%`,marginTop:6}}/>}
+                      </div>
+                    );
+                  })
+                }
+                {/* End Voting footer */}
+                <div style={{padding:'14px 20px',borderTop:'1px solid var(--line)'}}>
+                  {leaders.length > 1 && maxVotes > 0 && (
+                    <p style={{fontSize:11,color:'var(--muted)',letterSpacing:.5,marginBottom:10,textAlign:'center'}}>
+                      Tie between {leaders.map(l=>l.name).join(' & ')} — ask them to change their votes
+                    </p>
+                  )}
+                  <button className="btn-primary" style={{width:'100%'}}
+                    disabled={maxVotes===0 || leaders.length>1}
+                    onClick={endVoting}>
+                    ⚖ End Voting — Eliminate {leaders.length===1 ? leaders[0].name : '…'}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Players & roles — manual override */}
@@ -1471,17 +1490,11 @@ function ModDay({room, upd, onVoice, onExit}) {
                 </span>
                 <span style={{display:'flex',gap:8,alignItems:'center'}}>
                   {p.alive ? <span className="pill pill-alive">Alive</span> : <span className="pill pill-dead">Dead</span>}
-                  {p.alive
-                    ? <button className="btn-danger-sm" onClick={()=>toggleDead(p.id)}>Eliminate</button>
-                    : <button className="btn-success-sm" onClick={()=>toggleDead(p.id)}>Revive</button>}
+                  {!p.alive && <button className="btn-success-sm" onClick={()=>toggleDead(p.id)}>Revive</button>}
                 </span>
               </div>
             ))}
           </div>
-
-          <button className="btn-primary" onClick={beginNight}>
-            ▶ Begin Night {room.round+1}
-          </button>
         </>
       )}
     </div>
@@ -1754,7 +1767,9 @@ function PlayerDay({room, me, myId, upd, onExit}) {
   const maxVotes = Math.max(0, ...Object.values(voteCounts));
 
   function vote(targetId) {
+    if (room.votingEnded) return;
     upd(r => {
+      if (r.votingEnded) return r;
       if (!r.votes) r.votes = {};
       if (r.votes[myId] === targetId) delete r.votes[myId];
       else r.votes[myId] = targetId;
@@ -1796,30 +1811,37 @@ function PlayerDay({room, me, myId, upd, onExit}) {
       <div className="card" style={{padding:0,marginBottom:14}}>
         <div style={{padding:'14px 18px',borderBottom:'1px solid var(--line)'}}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-            <p className="eyebrow">Vote to Eliminate</p>
-            <span style={{fontSize:10,letterSpacing:2,color:'var(--muted)'}}>{Object.keys(votes).length}/{totalVoters}</span>
+            <p className="eyebrow">{room.votingEnded ? 'Voting Result' : 'Vote to Eliminate'}</p>
+            {!room.votingEnded && <span style={{fontSize:10,letterSpacing:2,color:'var(--muted)'}}>{Object.keys(votes).length}/{totalVoters}</span>}
           </div>
-          {myVote && <p className="muted" style={{marginTop:4,fontSize:12}}>Voted for {nameOf(room.players,myVote)}. Tap again to change.</p>}
+          {!room.votingEnded && myVote && <p className="muted" style={{marginTop:4,fontSize:12}}>Voted for {nameOf(room.players,myVote)}. Tap again to change.</p>}
         </div>
-        <div className="target-list" style={{border:'none',margin:0}}>
-          {alivePlayers.map(p => {
-            const vc = voteCounts[p.id] || 0;
-            const isLeader = vc === maxVotes && maxVotes > 0;
-            const pct = totalVoters ? (vc/totalVoters)*100 : 0;
-            return (
-              <div key={p.id}>
-                <button className={`target-btn${myVote===p.id?' vote-selected':''}`} onClick={()=>vote(p.id)}>
-                  <span className={isLeader?'vote-leading':''}>{p.name}</span>
-                  <span className="vote-count" style={{float:'right',fontSize:10,letterSpacing:2,color:isLeader?'var(--red2)':'var(--muted)'}}>
-                    {vc>0?`${vc} vote${vc!==1?'s':''}`:''}{myVote===p.id?' ✓':''}
-                  </span>
-                </button>
-                {vc > 0 && <div className="vote-bar" style={{width:`${pct}%`,margin:'-1px 18px 0'}}/>}
-              </div>
-            );
-          })}
-          {alivePlayers.length===0 && <p className="muted" style={{padding:'14px 18px'}}>No players to vote for.</p>}
-        </div>
+        {room.votingEnded ? (
+          <div style={{padding:'22px 18px',textAlign:'center'}}>
+            <p className="eyebrow" style={{marginBottom:8,color:'var(--red2)'}}>Eliminated by Vote</p>
+            <p style={{fontSize:20,fontFamily:'Playfair Display,serif'}}>{room.eliminatedThisRound || 'No one'}</p>
+          </div>
+        ) : (
+          <div className="target-list" style={{border:'none',margin:0}}>
+            {alivePlayers.map(p => {
+              const vc = voteCounts[p.id] || 0;
+              const isLeader = vc === maxVotes && maxVotes > 0;
+              const pct = totalVoters ? (vc/totalVoters)*100 : 0;
+              return (
+                <div key={p.id}>
+                  <button className={`target-btn${myVote===p.id?' vote-selected':''}`} onClick={()=>vote(p.id)}>
+                    <span className={isLeader?'vote-leading':''}>{p.name}</span>
+                    <span className="vote-count" style={{float:'right',fontSize:10,letterSpacing:2,color:isLeader?'var(--red2)':'var(--muted)'}}>
+                      {vc>0?`${vc} vote${vc!==1?'s':''}`:''}{myVote===p.id?' ✓':''}
+                    </span>
+                  </button>
+                  {vc > 0 && <div className="vote-bar" style={{width:`${pct}%`,margin:'-1px 18px 0'}}/>}
+                </div>
+              );
+            })}
+            {alivePlayers.length===0 && <p className="muted" style={{padding:'14px 18px'}}>No players to vote for.</p>}
+          </div>
+        )}
       </div>
 
       {/* Player list */}
