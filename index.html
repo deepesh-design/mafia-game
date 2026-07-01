@@ -770,9 +770,9 @@ function App() {
     const r = {
       code, shortCode, modId, phase:'lobby', round:0, nightStep:0, nightScript:[],
       players:[{id:modId, name:nameInput.trim(), role:null, alive:true, isMod:true}],
-      nightActions:{mafiaTarget:null, doctorSave:null, detectiveCheck:null},
+      nightActions:{mafiaTarget:null, doctorSave:null, detectiveCheck:null, mafiaVotes:{}, doctorConfirmed:false, detectiveConfirmed:false},
       detectiveResult:null, lastDeath:null, speakTick:0, speakText:'',
-      votes:{}, dayTimer:null,
+      votes:{}, dayTimer:null, roundHistory:[],
     };
     saveRoom(r);
     sessionStorage.setItem('maf:mod:' + code, '1');
@@ -953,7 +953,7 @@ function ModLobby({room, upd, joinUrl, onVoice, onExit}) {
       const hasDet = Object.values(finalRoles).includes('detective');
       r.nightScript = buildScript(1, hasDoc, hasDet);
       r.phase = 'night'; r.round = 1; r.nightStep = 0;
-      r.nightActions = {mafiaTarget:null, doctorSave:null, detectiveCheck:null, mafiaVotes:{}};
+      r.nightActions = {mafiaTarget:null, doctorSave:null, detectiveCheck:null, mafiaVotes:{}, doctorConfirmed:false, detectiveConfirmed:false};
       r.detectiveResult = null; r.lastDeath = null; r.votes = {}; r.dayTimer = null;
       r.speakTick = 1; r.speakText = r.nightScript[0].speak;
       return r;
@@ -1114,11 +1114,15 @@ function ModNight({room, upd, onVoice, onExit}) {
           r.players = r.players.map(p => p.id===t ? {...p,alive:false} : p);
           death = r.players.find(p=>p.id===t)?.name ?? null;
         }
+        let detectiveEntry = null;
         if (dc) {
           const cp = r.players.find(p=>p.id===dc);
           r.detectiveResult = cp ? {name:cp.name, isMafia:cp.role==='mafia'} : null;
+          detectiveEntry = r.detectiveResult;
         }
         r.lastDeath = death;
+        if (!r.roundHistory) r.roundHistory = [];
+        r.roundHistory.push({round: r.round, death, detectiveResult: detectiveEntry});
         r.phase = 'day'; r.votes = {}; r.dayTimer = null;
         r.speakTick = (r.speakTick||0)+1;
         r.speakText = death
@@ -1133,6 +1137,13 @@ function ModNight({room, upd, onVoice, onExit}) {
   const dcId = room.nightActions.detectiveCheck;
   const dcPlayer = dcId ? room.players.find(p=>p.id===dcId) : null;
   const alreadyRevealed = room.detectiveResult && dcPlayer && room.detectiveResult.name === dcPlayer.name;
+
+  // Block next until the relevant role has acted and confirmed
+  const nextBlocked = (
+    (step.show === 'mafia'     && !room.nightActions.mafiaTarget) ||
+    (step.show === 'doctor'    && !room.nightActions.doctorConfirmed) ||
+    (step.show === 'detective' && !room.nightActions.detectiveConfirmed)
+  );
 
   return (
     <div className="wrap">
@@ -1239,8 +1250,15 @@ function ModNight({room, upd, onVoice, onExit}) {
 
       <div style={{display:'grid',gridTemplateColumns:'1fr 2fr',gap:8,marginBottom:20}}>
         <button className="btn-secondary" onClick={prev} disabled={stepIdx===0}>← Back</button>
-        <button className="btn-primary" onClick={next}>{isLast ? '☀ Wake the City' : 'Next Step →'}</button>
+        <button className="btn-primary" onClick={next} disabled={nextBlocked}>
+          {isLast ? '☀ Wake the City' : 'Next Step →'}
+        </button>
       </div>
+      {nextBlocked && (
+        <p style={{textAlign:'center',fontSize:10,letterSpacing:2,color:'var(--muted)',textTransform:'uppercase',marginBottom:16}}>
+          Waiting for {step.show} to confirm their action
+        </p>
+      )}
 
       {/* Players roster */}
       <p className="eyebrow" style={{marginBottom:10}}>Players</p>
@@ -1277,6 +1295,15 @@ function ModDay({room, upd, onVoice, onExit}) {
   const maxVotes = Math.max(0, ...Object.values(voteCounts));
   const leaders = alivePlayers.filter(p => (voteCounts[p.id]||0) === maxVotes && maxVotes > 0);
 
+  function endVoting() {
+    if (maxVotes === 0) return;
+    if (leaders.length > 1) return; // tie — do nothing, show message
+    upd(r => {
+      const pid = leaders[0].id;
+      r.players = r.players.map(p => p.id===pid ? {...p,alive:false} : p);
+      return r;
+    });
+  }
   function toggleDead(pid) {
     upd(r => { r.players = r.players.map(p=>p.id===pid?{...p,alive:!p.alive}:p); return r; });
   }
@@ -1293,7 +1320,7 @@ function ModDay({room, upd, onVoice, onExit}) {
       const hasDet = r.players.some(p=>p.role==='detective'&&p.alive);
       r.round = round; r.phase = 'night'; r.nightStep = 0;
       r.nightScript = buildScript(round, hasDoc, hasDet);
-      r.nightActions = {mafiaTarget:null,doctorSave:null,detectiveCheck:null,mafiaVotes:{}};
+      r.nightActions = {mafiaTarget:null,doctorSave:null,detectiveCheck:null,mafiaVotes:{},doctorConfirmed:false,detectiveConfirmed:false};
       r.detectiveResult = null; r.votes = {}; r.dayTimer = null;
       r.speakTick = (r.speakTick||0)+1;
       r.speakText = r.nightScript[0].speak;
@@ -1316,7 +1343,7 @@ function ModDay({room, upd, onVoice, onExit}) {
         </div>
       ) : (
         <>
-          {/* Night report */}
+          {/* Night report — current round */}
           <div className="action-panel" style={{borderTop:'1px solid var(--line)'}}>
             <div className="action-panel-head">
               <h3>Night Report</h3>
@@ -1337,6 +1364,32 @@ function ModDay({room, upd, onVoice, onExit}) {
               </div>
             )}
           </div>
+
+          {/* Round history — past rounds */}
+          {(room.roundHistory||[]).length > 1 && (
+            <div className="action-panel" style={{borderTop:'none',marginTop:0}}>
+              <div className="action-panel-head">
+                <h3>Round History</h3>
+              </div>
+              {[...(room.roundHistory||[])].reverse().slice(1).map(entry => (
+                <div key={entry.round} style={{borderBottom:'1px solid var(--line)',padding:'12px 20px'}}>
+                  <p className="eyebrow" style={{fontSize:9,marginBottom:8}}>Round {entry.round}</p>
+                  <div style={{display:'flex',justifyContent:'space-between',marginBottom:entry.detectiveResult?6:0}}>
+                    <span style={{fontSize:12,color:'var(--muted)',letterSpacing:.5}}>Eliminated</span>
+                    <span style={{fontSize:12,color:entry.death?'var(--red2)':'var(--muted)'}}>{entry.death||'No one'}</span>
+                  </div>
+                  {entry.detectiveResult && (
+                    <div style={{display:'flex',justifyContent:'space-between'}}>
+                      <span style={{fontSize:12,color:'var(--muted)',letterSpacing:.5}}>Detective Intel</span>
+                      <span style={{fontSize:12,color:entry.detectiveResult.isMafia?'var(--red2)':'var(--green)'}}>
+                        {entry.detectiveResult.name} — {entry.detectiveResult.isMafia?'Mafia':'Not Mafia'}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Discussion timer */}
           <div className="action-panel" style={{borderTop:'none',marginTop:0}}>
@@ -1372,10 +1425,7 @@ function ModDay({room, upd, onVoice, onExit}) {
                 const isLeader = leaders.includes(p) && maxVotes > 0;
                 const pct = totalVoters ? (vc/totalVoters)*100 : 0;
                 return (
-                  <div key={p.id} style={{
-                    padding:'12px 20px',
-                    borderBottom: i<alivePlayers.length-1?'1px solid var(--line)':'none'
-                  }}>
+                  <div key={p.id} style={{padding:'12px 20px',borderBottom:i<alivePlayers.length-1?'1px solid var(--line)':'none'}}>
                     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                       <span style={{fontSize:14,color:isLeader?'var(--red2)':'var(--text)'}} className={isLeader?'vote-leading':''}>
                         {p.name}
@@ -1389,13 +1439,26 @@ function ModDay({room, upd, onVoice, onExit}) {
                 );
               })
             }
+            {/* End Voting footer */}
+            <div style={{padding:'14px 20px',borderTop:'1px solid var(--line)'}}>
+              {leaders.length > 1 && maxVotes > 0 && (
+                <p style={{fontSize:11,color:'var(--muted)',letterSpacing:.5,marginBottom:10,textAlign:'center'}}>
+                  Tie between {leaders.map(l=>l.name).join(' & ')} — resolve manually below
+                </p>
+              )}
+              <button className="btn-primary" style={{width:'100%'}}
+                disabled={maxVotes===0 || leaders.length>1}
+                onClick={endVoting}>
+                ⚖ End Voting — Eliminate {leaders.length===1 ? leaders[0].name : '…'}
+              </button>
+            </div>
           </div>
 
-          {/* Players & roles */}
+          {/* Players & roles — manual override */}
           <div className="action-panel" style={{borderTop:'none',marginTop:0,marginBottom:0}}>
             <div className="action-panel-head">
               <h3>Players &amp; Roles</h3>
-              <span className="muted" style={{fontSize:10,letterSpacing:2}}>Mark eliminations below</span>
+              <span className="muted" style={{fontSize:10,letterSpacing:2}}>Manual override</span>
             </div>
             {players.map((p,i) => (
               <div key={p.id} className="p-row" style={{borderBottom:i<players.length-1?'1px solid var(--line)':'none'}}>
@@ -1561,24 +1624,45 @@ function PlayerNight({room, me, myId, upd, onExit}) {
     );
   } else if (me.role==='doctor' && show==='doctor') {
     const myPick = room.nightActions.doctorSave;
+    const confirmed = room.nightActions.doctorConfirmed;
     action = (
       <div className="card" style={{borderTop:'none',padding:0,marginBottom:14}}>
         <div className="action-panel-head">
           <h3>Choose Who to Protect</h3>
-          <span className="ap-status">Doctor Night</span>
+          <span className="ap-status">{confirmed ? 'Protection Confirmed' : 'Doctor Night'}</span>
         </div>
-        <div className="target-list" style={{border:'none',margin:0}}>
-          {alive.map(p => (
-            <button key={p.id} className={`target-btn${myPick===p.id?' selected':''}`} onClick={()=>pick('doctorSave',p.id)}>
-              {p.name}{p.id===myId?' (you)':''}
-              {myPick===p.id && <span style={{float:'right',fontSize:10,letterSpacing:2,color:'var(--green)'}}>PROTECTED</span>}
-            </button>
-          ))}
-        </div>
+        {confirmed ? (
+          <div style={{padding:'20px 22px',textAlign:'center'}}>
+            <p className="eyebrow" style={{marginBottom:6,color:'var(--green)'}}>Protection Confirmed</p>
+            <p style={{fontSize:20,fontFamily:'Playfair Display,serif'}}>{nameOf(room.players,myPick)}</p>
+            <p className="muted" style={{fontSize:11,marginTop:8}}>Your choice is locked in.</p>
+          </div>
+        ) : (
+          <>
+            <div className="target-list" style={{border:'none',margin:0}}>
+              {alive.map(p => (
+                <button key={p.id} className={`target-btn${myPick===p.id?' selected':''}`}
+                  onClick={()=>pick('doctorSave',p.id)}>
+                  {p.name}{p.id===myId?' (you)':''}
+                  {myPick===p.id && <span style={{float:'right',fontSize:10,letterSpacing:2,color:'var(--green)'}}>SELECTED</span>}
+                </button>
+              ))}
+            </div>
+            {myPick && (
+              <div className="action-footer">
+                <button className="btn-primary" style={{width:'100%',background:'var(--green)',borderColor:'var(--green)',color:'#000'}}
+                  onClick={()=>upd(r=>{ r.nightActions.doctorConfirmed=true; return r; })}>
+                  💉 Confirm — Protect {nameOf(room.players,myPick)}
+                </button>
+              </div>
+            )}
+          </>
+        )}
       </div>
     );
   } else if (me.role==='detective' && show==='detective') {
     const myPick = room.nightActions.detectiveCheck;
+    const confirmed = room.nightActions.detectiveConfirmed;
     const pickedName = myPick ? room.players.find(p=>p.id===myPick)?.name : null;
     const revealed = room.detectiveResult && pickedName && room.detectiveResult.name === pickedName;
     action = (
@@ -1586,31 +1670,52 @@ function PlayerNight({room, me, myId, upd, onExit}) {
         <div className="card" style={{borderTop:'none',padding:0}}>
           <div className="action-panel-head">
             <h3>Investigate a Player</h3>
-            <span className="ap-status">Detective Night</span>
+            <span className="ap-status">{confirmed ? 'Investigation Confirmed' : 'Detective Night'}</span>
           </div>
-          <div className="target-list" style={{border:'none',margin:0}}>
-            {alive.filter(p=>p.id!==myId).map(p => (
-              <button key={p.id} className={`target-btn${myPick===p.id?' selected':''}`} onClick={()=>pick('detectiveCheck',p.id)}>
-                {p.name}
-                {myPick===p.id && <span style={{float:'right',fontSize:10,letterSpacing:2,color:'var(--blue)'}}>SELECTED</span>}
-              </button>
-            ))}
-          </div>
-          {revealed && (
-            <div style={{padding:'14px 18px',borderTop:'1px solid var(--line)',background:'var(--panel2)'}}>
-              <p style={{fontSize:10,letterSpacing:3,color:'var(--muted)',marginBottom:8,textTransform:'uppercase'}}>Investigation Result</p>
-              <p style={{fontSize:16,fontFamily:'Playfair Display,serif'}}>
-                <b>{room.detectiveResult.name}</b> is{' '}
-                <b style={{color:room.detectiveResult.isMafia?'var(--red2)':'var(--green)'}}>
-                  {room.detectiveResult.isMafia?'Mafia':'Not Mafia'}
-                </b>
-              </p>
-            </div>
-          )}
-          {myPick && !revealed && (
-            <div style={{padding:'13px 18px',borderTop:'1px solid var(--line)',background:'var(--panel2)'}}>
-              <p style={{fontSize:10,letterSpacing:3,color:'var(--muted)',textTransform:'uppercase'}}>Awaiting Moderator Reveal…</p>
-            </div>
+          {confirmed ? (
+            <>
+              <div style={{padding:'20px 22px',textAlign:'center'}}>
+                <p className="eyebrow" style={{marginBottom:6,color:'var(--gold)'}}>Investigating</p>
+                <p style={{fontSize:20,fontFamily:'Playfair Display,serif'}}>{pickedName}</p>
+                <p className="muted" style={{fontSize:11,marginTop:8}}>Your target is locked in.</p>
+              </div>
+              {revealed && (
+                <div style={{padding:'14px 18px',borderTop:'1px solid var(--line)',background:'var(--panel2)'}}>
+                  <p style={{fontSize:10,letterSpacing:3,color:'var(--muted)',marginBottom:8,textTransform:'uppercase'}}>Investigation Result</p>
+                  <p style={{fontSize:16,fontFamily:'Playfair Display,serif'}}>
+                    <b>{room.detectiveResult.name}</b> is{' '}
+                    <b style={{color:room.detectiveResult.isMafia?'var(--red2)':'var(--green)'}}>
+                      {room.detectiveResult.isMafia?'Mafia':'Not Mafia'}
+                    </b>
+                  </p>
+                </div>
+              )}
+              {!revealed && (
+                <div style={{padding:'13px 18px',borderTop:'1px solid var(--line)',background:'var(--panel2)'}}>
+                  <p style={{fontSize:10,letterSpacing:3,color:'var(--muted)',textTransform:'uppercase'}}>Awaiting Moderator Reveal…</p>
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="target-list" style={{border:'none',margin:0}}>
+                {alive.filter(p=>p.id!==myId).map(p => (
+                  <button key={p.id} className={`target-btn${myPick===p.id?' selected':''}`}
+                    onClick={()=>pick('detectiveCheck',p.id)}>
+                    {p.name}
+                    {myPick===p.id && <span style={{float:'right',fontSize:10,letterSpacing:2,color:'var(--gold)'}}>SELECTED</span>}
+                  </button>
+                ))}
+              </div>
+              {myPick && (
+                <div className="action-footer">
+                  <button className="btn-primary" style={{width:'100%',background:'var(--gold)',borderColor:'var(--gold)',color:'#000'}}
+                    onClick={()=>upd(r=>{ r.nightActions.detectiveConfirmed=true; return r; })}>
+                    🔍 Confirm — Investigate {pickedName}
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
