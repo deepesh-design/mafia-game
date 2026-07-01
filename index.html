@@ -1326,8 +1326,11 @@ function ModDay({room, upd, onVoice, onExit}) {
   const totalVoters = alivePlayers.length;
   const maxVotes = Math.max(0, ...Object.values(voteCounts));
   const leaders = alivePlayers.filter(p => (voteCounts[p.id]||0) === maxVotes && maxVotes > 0);
+  const allVoted = totalVoters > 0 && Object.keys(votes).length >= totalVoters;
+  const votesRemaining = Math.max(0, totalVoters - Object.keys(votes).length);
 
   function endVoting() {
+    if (!allVoted) return;
     if (maxVotes === 0) return;
     if (leaders.length > 1) return; // tie — do nothing, show message
     upd(r => {
@@ -1465,13 +1468,18 @@ function ModDay({room, upd, onVoice, onExit}) {
                 }
                 {/* End Voting footer */}
                 <div style={{padding:'14px 20px',borderTop:'1px solid var(--line)'}}>
-                  {leaders.length > 1 && maxVotes > 0 && (
+                  {!allVoted && (
+                    <p style={{fontSize:11,color:'var(--muted)',letterSpacing:.5,marginBottom:10,textAlign:'center'}}>
+                      Waiting for {votesRemaining} more vote{votesRemaining!==1?'s':''} before voting can end
+                    </p>
+                  )}
+                  {allVoted && leaders.length > 1 && maxVotes > 0 && (
                     <p style={{fontSize:11,color:'var(--muted)',letterSpacing:.5,marginBottom:10,textAlign:'center'}}>
                       Tie between {leaders.map(l=>l.name).join(' & ')} — ask them to change their votes
                     </p>
                   )}
                   <button className="btn-primary" style={{width:'100%'}}
-                    disabled={maxVotes===0 || leaders.length>1}
+                    disabled={!allVoted || maxVotes===0 || leaders.length>1}
                     onClick={endVoting}>
                     ⚖ End Voting — Eliminate {leaders.length===1 ? leaders[0].name : '…'}
                   </button>
