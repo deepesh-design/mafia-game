@@ -1139,12 +1139,25 @@ function ModNight({room, upd, onVoice, onExit}) {
   const dcPlayer = dcId ? room.players.find(p=>p.id===dcId) : null;
   const alreadyRevealed = room.detectiveResult && dcPlayer && room.detectiveResult.name === dcPlayer.name;
 
+  // A step's role has no one left alive to act it out — the narration still plays
+  // (so the mafia can't infer who's dead from a skipped step), but nothing blocks progress.
+  const roleDead = (
+    (step.show === 'doctor'    && !players.some(p=>p.role==='doctor'&&p.alive)) ||
+    (step.show === 'detective' && !players.some(p=>p.role==='detective'&&p.alive))
+  );
+
   // Block next until the relevant role has acted and confirmed
-  const nextBlocked = (
+  const nextBlocked = !roleDead && (
     (step.show === 'mafia'     && !room.nightActions.mafiaTarget) ||
     (step.show === 'doctor'    && !room.nightActions.doctorConfirmed) ||
     (step.show === 'detective' && !room.nightActions.detectiveConfirmed)
   );
+
+  useEffect(() => {
+    if (!roleDead || isLast) return;
+    const t = setTimeout(() => { next(); }, 10000);
+    return () => clearTimeout(t);
+  }, [stepIdx, roleDead]);
 
   return (
     <div className="wrap">
@@ -1260,6 +1273,11 @@ function ModNight({room, upd, onVoice, onExit}) {
           Waiting for {step.show} to confirm their action
         </p>
       )}
+      {roleDead && !isLast && (
+        <p style={{textAlign:'center',fontSize:10,letterSpacing:2,color:'var(--muted)',textTransform:'uppercase',marginBottom:16}}>
+          No living {step.show} — continuing automatically…
+        </p>
+      )}
 
       {/* Players roster */}
       <p className="eyebrow" style={{marginBottom:10}}>Players</p>
@@ -1320,8 +1338,10 @@ function ModDay({room, upd, onVoice, onExit}) {
   function beginNight() {
     upd(r => {
       const round = r.round+1;
-      const hasDoc = r.players.some(p=>p.role==='doctor'&&p.alive);
-      const hasDet = r.players.some(p=>p.role==='detective'&&p.alive);
+      // Keep asking for Doctor/Detective every night even after they've died —
+      // skipping their step would tell the mafia (who can hear the narration) that they're dead.
+      const hasDoc = r.players.some(p=>p.role==='doctor');
+      const hasDet = r.players.some(p=>p.role==='detective');
       r.round = round; r.phase = 'night'; r.nightStep = 0;
       r.nightScript = buildScript(round, hasDoc, hasDet);
       r.nightActions = {mafiaTarget:null,doctorSave:null,detectiveCheck:null,mafiaVotes:{},doctorConfirmed:false,detectiveConfirmed:false};
