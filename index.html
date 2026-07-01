@@ -11,399 +11,407 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style>
     :root {
-      --bg: #080607;
-      --panel: #0e0c10;
-      --panel2: #151219;
-      --line: #2c2618;
-      --red: #7a1515;
-      --red2: #c0392b;
-      --gold: #c9a84c;
+      --bg:    #050403;
+      --panel: #0c0a08;
+      --panel2:#121008;
+      --line:  rgba(255,255,255,0.08);
+      --line2: rgba(201,168,76,0.22);
+      --red:   #6e1111;
+      --red2:  #c0392b;
+      --gold:  #c9a84c;
       --gold2: #e8c875;
       --green: #2e7d52;
-      --blue: #4a7abf;
-      --text: #f0e8d5;
-      --muted: #6e6248;
+      --blue:  #4a7abf;
+      --text:  #e8e0ce;
+      --muted: rgba(232,224,206,0.38);
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: 'Lora', Georgia, 'Times New Roman', serif;
+      font-family: 'Lora', Georgia, serif;
       background: var(--bg);
-      background-image:
-        radial-gradient(ellipse at 10% 0%, rgba(120,85,10,.22) 0%, transparent 50%),
-        radial-gradient(ellipse at 90% 100%, rgba(90,12,12,.18) 0%, transparent 50%),
-        radial-gradient(ellipse at 50% 50%, rgba(30,20,5,.5) 0%, transparent 80%);
       color: var(--text);
       min-height: 100vh;
-      padding: 28px 16px 80px;
-      /* subtle noise texture */
-      position: relative;
-    }
-    body::before {
-      content: '';
-      position: fixed; inset: 0; pointer-events: none; z-index: 0;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
-      opacity: .6;
+      padding: 0 16px 100px;
     }
 
     h1, h2, h3, h4 {
       font-family: 'Playfair Display', Georgia, serif;
       font-weight: 700;
-      letter-spacing: .02em;
     }
-    a { color: inherit; }
 
-    .wrap { max-width: 560px; margin: 0 auto; position: relative; z-index: 1; }
+    /* ── Layout ── */
+    .wrap { max-width: 580px; margin: 0 auto; }
+
+    /* ── Eyebrow / label ── */
+    .eyebrow {
+      font-family: 'Lora', serif;
+      font-size: 10px; letter-spacing: 4px;
+      text-transform: uppercase; color: var(--muted);
+    }
+    .center { text-align: center; }
+    .muted  { color: var(--muted); font-size: 13px; font-family: 'Lora', Georgia, serif; }
+    .warn   { color: var(--gold); font-size: 12px; letter-spacing: 1px; }
+
+    /* ── Section separator ── */
+    .section {
+      border-top: 1px solid var(--line);
+      padding-top: 20px;
+      margin-top: 20px;
+    }
+    .section-head {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 14px;
+    }
 
     /* ── Cards ── */
     .card {
       background: var(--panel);
-      border: 1px solid rgba(201,168,76,.18);
-      border-radius: 14px;
-      padding: 24px;
+      border: 1px solid var(--line);
+      padding: 22px;
       margin-bottom: 16px;
-      position: relative;
-      overflow: hidden;
     }
-    .card::before {
-      content: '';
-      position: absolute; top: 0; left: 15%; right: 15%; height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(201,168,76,.5), transparent);
-    }
-    .card-inner { background: var(--panel2); border-radius: 10px; padding: 14px; margin-top: 10px; border: 1px solid rgba(201,168,76,.08); }
-
-    .center { text-align: center; }
-    .muted { color: var(--muted); font-size: 13px; font-family: 'Lora', Georgia, serif; }
-    .err-box { border-color: var(--red2) !important; color: var(--red2); }
-    .warn { color: var(--gold); font-size: 13px; }
+    .card-flush { padding: 0; }
 
     /* ── Inputs ── */
     input, select {
       width: 100%;
-      background: var(--panel2);
-      border: 1px solid rgba(201,168,76,.2);
+      background: transparent;
+      border: 1px solid var(--line);
       color: var(--text);
-      padding: 12px 14px;
-      border-radius: 8px;
+      padding: 13px 16px;
       font-size: 14px;
       font-family: 'Lora', Georgia, serif;
       outline: none;
       margin-top: 10px;
       appearance: none;
-      transition: border-color .2s, box-shadow .2s;
+      transition: border-color .15s;
     }
     input::placeholder { color: var(--muted); }
-    input:focus, select:focus {
-      border-color: var(--gold);
-      box-shadow: 0 0 0 3px rgba(201,168,76,.12);
-    }
+    input:focus, select:focus { border-color: var(--gold); }
     select {
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23c9a84c' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
       background-repeat: no-repeat;
-      background-position: right 12px center;
-      padding-right: 36px;
+      background-position: right 14px center;
+      padding-right: 38px;
+      cursor: pointer;
     }
 
     /* ── Buttons ── */
     button {
-      cursor: pointer; border: none; border-radius: 8px;
-      padding: 11px 18px; font-size: 14px; font-weight: 600;
-      font-family: 'Playfair Display', Georgia, serif;
-      transition: all .2s; letter-spacing: .04em;
+      cursor: pointer; border: none;
+      padding: 11px 18px; font-size: 12px; font-weight: 600;
+      font-family: 'Lora', Georgia, serif;
+      transition: opacity .15s; letter-spacing: .1em;
+      text-transform: uppercase;
     }
-    button:disabled { opacity: .3; cursor: not-allowed; }
-    button:not(:disabled):hover { opacity: .88; }
+    button:disabled { opacity: .28; cursor: not-allowed; }
+    button:not(:disabled):hover { opacity: .75; }
 
     .btn-primary {
-      background: linear-gradient(135deg, #a8782a 0%, var(--gold) 50%, #b8902e 100%);
-      color: #0a0807;
-      width: 100%; margin-top: 12px;
-      font-size: 14px; padding: 14px;
-      text-transform: uppercase; letter-spacing: .1em;
-      box-shadow: 0 4px 24px rgba(201,168,76,.28), inset 0 1px 0 rgba(255,255,255,.12);
-      font-weight: 700;
+      background: var(--red); color: var(--text);
+      width: 100%; margin-top: 14px;
+      padding: 15px; font-size: 11px; letter-spacing: .18em;
     }
-    .btn-primary:not(:disabled):hover {
-      box-shadow: 0 6px 32px rgba(201,168,76,.4);
-      opacity: 1; transform: translateY(-1px);
-    }
+    .btn-primary:not(:disabled):hover { opacity: 1; background: #7d1515; }
+
     .btn-secondary {
-      background: var(--panel2); color: var(--text);
-      border: 1px solid rgba(201,168,76,.25);
+      background: transparent; color: var(--text);
+      border: 1px solid var(--line);
       width: 100%; margin-top: 10px;
     }
-    .btn-secondary:hover { border-color: var(--gold); }
+    .btn-secondary:not(:disabled):hover { border-color: var(--gold); color: var(--gold); opacity: 1; }
+
     .btn-sm {
-      background: var(--panel2); color: var(--text);
-      border: 1px solid rgba(201,168,76,.2);
-      padding: 6px 14px; font-size: 12px; border-radius: 7px;
+      background: transparent; color: var(--muted);
+      border: 1px solid var(--line);
+      padding: 6px 13px; font-size: 10px; letter-spacing: .1em;
     }
-    .btn-sm:hover { border-color: var(--gold); color: var(--gold); }
+    .btn-sm:not(:disabled):hover { border-color: var(--gold); color: var(--gold); opacity: 1; }
+
+    .btn-gold-sm {
+      background: transparent; color: var(--gold);
+      border: 1px solid rgba(201,168,76,.32);
+      padding: 7px 16px; font-size: 10px; letter-spacing: .12em;
+      cursor: pointer;
+    }
+    .btn-gold-sm:not(:disabled):hover { background: rgba(201,168,76,.07); opacity: 1; }
+
     .btn-danger-sm {
       background: none; color: var(--red2);
-      border: 1px solid rgba(192,57,43,.5);
-      padding: 4px 10px; font-size: 12px; border-radius: 6px; cursor: pointer;
+      border: 1px solid rgba(192,57,43,.35);
+      padding: 5px 11px; font-size: 10px; letter-spacing: .08em; cursor: pointer;
     }
-    .btn-danger-sm:hover { border-color: var(--red2); background: rgba(192,57,43,.1); }
+    .btn-danger-sm:hover { border-color: var(--red2); opacity: 1; }
+
     .btn-success-sm {
       background: none; color: var(--green);
-      border: 1px solid rgba(46,125,82,.5);
-      padding: 4px 10px; font-size: 12px; border-radius: 6px; cursor: pointer;
+      border: 1px solid rgba(46,125,82,.35);
+      padding: 5px 11px; font-size: 10px; letter-spacing: .08em; cursor: pointer;
     }
-    .btn-gold-sm {
-      background: rgba(201,168,76,.1); color: var(--gold);
-      border: 1px solid rgba(201,168,76,.4);
-      padding: 6px 16px; font-size: 12px; border-radius: 7px;
-      cursor: pointer; font-weight: 700; letter-spacing: .06em;
-    }
-    .btn-gold-sm:hover { background: rgba(201,168,76,.2); border-color: var(--gold); }
+    .btn-success-sm:hover { opacity: 1; }
+
     .btn-exit {
-      background: none; color: rgba(192,57,43,.8);
-      border: 1px solid rgba(192,57,43,.35);
-      padding: 6px 14px; font-size: 12px; border-radius: 7px;
-      cursor: pointer; font-weight: 600; letter-spacing: .04em;
+      background: none; color: var(--muted);
+      border: 1px solid var(--line);
+      padding: 7px 14px; font-size: 10px; letter-spacing: .1em; cursor: pointer;
     }
-    .btn-exit:hover { border-color: var(--red2); color: var(--red2); }
+    .btn-exit:hover { border-color: rgba(192,57,43,.5); color: var(--red2); opacity: 1; }
+
     .btn-voice {
-      background: var(--panel2); color: var(--muted);
-      border: 1px solid rgba(201,168,76,.15);
-      padding: 6px 14px; font-size: 12px; border-radius: 7px;
-      cursor: pointer; font-weight: 600;
+      background: transparent; color: var(--muted);
+      border: 1px solid var(--line);
+      padding: 7px 14px; font-size: 10px; letter-spacing: .1em; cursor: pointer;
     }
-    .btn-voice:hover { border-color: var(--gold); color: var(--gold); }
+    .btn-voice:hover { border-color: var(--gold); color: var(--gold); opacity: 1; }
+
+    .btn-reveal {
+      width: 100%; background: transparent; color: var(--muted);
+      border: 1px solid var(--line); border-top: none;
+      padding: 10px; font-size: 10px; letter-spacing: .12em;
+      cursor: pointer; text-transform: uppercase; font-family: 'Lora', serif;
+    }
+    .btn-reveal:hover { color: var(--gold); opacity: 1; }
 
     /* ── Room code ── */
     .code {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 46px; letter-spacing: 14px; text-align: center;
-      color: var(--gold); font-weight: 900; padding: 8px 0;
-      text-shadow: 0 0 40px rgba(201,168,76,.35), 0 2px 4px rgba(0,0,0,.8);
-    }
-    .small-caps {
-      color: var(--muted); font-size: 11px; letter-spacing: 3px;
-      text-transform: uppercase; text-align: center;
-      font-family: 'Lora', Georgia, serif;
-    }
-
-    /* ── Divider ornament ── */
-    .ornament {
-      text-align: center; color: var(--gold); opacity: .4;
-      font-size: 18px; margin: 6px 0; letter-spacing: 8px;
+      font-family: 'Playfair Display', serif;
+      font-size: 54px; letter-spacing: 16px; text-align: center;
+      color: var(--gold); font-weight: 900; padding: 10px 0 6px;
     }
 
     /* ── Pills ── */
-    .pill { display: inline-block; padding: 3px 11px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: .04em; font-family: 'Lora', serif; }
-    .pill-alive { background: rgba(46,125,82,.18); color: #4aad7a; border: 1px solid rgba(46,125,82,.3); }
-    .pill-dead  { background: rgba(122,21,21,.18); color: #c0392b; border: 1px solid rgba(122,21,21,.3); text-decoration: line-through; }
-    .pill-mod   { background: rgba(201,168,76,.12); color: var(--gold); border: 1px solid rgba(201,168,76,.3); }
-
-    /* ── Player list ── */
-    .plist { list-style: none; padding: 0; margin-top: 10px; }
-    .plist li {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 11px 4px; border-bottom: 1px solid rgba(201,168,76,.08); gap: 12px;
+    .pill {
+      display: inline-block; padding: 3px 10px;
+      font-size: 10px; font-weight: 700; letter-spacing: .08em;
+      font-family: 'Lora', serif; text-transform: uppercase;
     }
-    .plist li:last-child { border-bottom: none; }
-    .player-name { font-size: 15px; font-family: 'Lora', serif; }
+    .pill-alive { background: rgba(46,125,82,.1);  color: #4aad7a; border: 1px solid rgba(46,125,82,.22); }
+    .pill-dead  { background: rgba(122,21,21,.1);  color: #c0392b; border: 1px solid rgba(122,21,21,.22); text-decoration: line-through; }
+    .pill-mod   { background: rgba(201,168,76,.08);color: var(--gold); border: 1px solid rgba(201,168,76,.22); }
+
+    /* ── Player rows (lobby) ── */
+    .player-row {
+      display: flex; align-items: center;
+      padding: 13px 0; border-bottom: 1px solid var(--line); gap: 14px;
+    }
+    .player-row:last-child { border-bottom: none; }
+    .player-num { font-size: 10px; color: var(--muted); letter-spacing: 2px; min-width: 22px; font-family: 'Lora', serif; }
+    .player-name { font-size: 14px; font-family: 'Lora', serif; flex: 1; }
+    .role-select { margin-top: 0; flex: 0 0 170px; font-size: 13px; }
 
     /* ── Phase badge ── */
     .badge-phase {
-      text-align: center; padding: 9px 16px; border-radius: 6px;
-      background: transparent;
-      border: 1px solid rgba(201,168,76,.25);
-      font-family: 'Playfair Display', serif;
-      font-size: 12px; letter-spacing: 4px; text-transform: uppercase;
-      color: var(--gold); margin-bottom: 18px;
-      text-shadow: 0 0 20px rgba(201,168,76,.3);
+      text-align: center; padding: 12px;
+      border: 1px solid var(--line); border-bottom: none;
+      font-family: 'Lora', serif;
+      font-size: 10px; letter-spacing: 5px; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 0;
     }
 
     /* ── Role cards ── */
     .role-card {
-      border-radius: 14px; padding: 36px 24px; text-align: center;
-      border: 1px solid rgba(201,168,76,.15);
-      position: relative; overflow: hidden;
+      padding: 30px 22px; text-align: center;
+      border: 1px solid var(--line); position: relative;
     }
-    .role-card::after {
-      content: '';
-      position: absolute; top: 0; left: 20%; right: 20%; height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(201,168,76,.6), transparent);
-    }
-    .role-mafia {
-      background: linear-gradient(160deg, #1e0a0a 0%, #0c0406 100%);
-      border-color: rgba(122,21,21,.45);
-      box-shadow: 0 0 40px rgba(122,21,21,.15) inset, 0 8px 32px rgba(0,0,0,.6);
-    }
-    .role-town {
-      background: linear-gradient(160deg, #0a1420 0%, #060c18 100%);
-      border-color: rgba(74,122,191,.3);
-      box-shadow: 0 0 40px rgba(74,122,191,.08) inset, 0 8px 32px rgba(0,0,0,.6);
-    }
-
-    .role-wrapper { position: relative; margin-bottom: 8px; }
+    .role-mafia { background: #0d0608; border-color: rgba(122,21,21,.35); }
+    .role-town  { background: #060c18; border-color: rgba(74,122,191,.22); }
+    .role-wrapper { position: relative; margin-bottom: 0; }
     .role-reveal-overlay {
-      position: absolute; inset: 0; border-radius: 14px;
-      background: rgba(8,6,7,.93);
-      border: 1px solid rgba(201,168,76,.15);
+      position: absolute; inset: 0;
+      background: rgba(5,4,3,.94);
+      border: 1px solid var(--line);
       display: flex; flex-direction: column;
       align-items: center; justify-content: center; gap: 10px; cursor: pointer;
-      transition: background .2s;
     }
-    .role-reveal-overlay:hover { background: rgba(8,6,7,.85); }
-    .role-reveal-overlay span { font-size: 34px; }
-    .role-reveal-overlay p { color: var(--muted); font-size: 13px; font-family: 'Lora', serif; letter-spacing: .04em; }
-    .btn-reveal {
-      width: 100%; background: var(--panel2); color: var(--muted);
-      border: 1px solid rgba(201,168,76,.15);
-      padding: 9px; font-size: 12px; border-radius: 8px;
-      cursor: pointer; margin-top: 6px; margin-bottom: 14px;
-      letter-spacing: .06em; text-transform: uppercase;
-      font-family: 'Lora', serif;
-    }
-    .btn-reveal:hover { border-color: rgba(201,168,76,.4); color: var(--gold); }
+    .role-reveal-overlay:hover { background: rgba(5,4,3,.86); }
+    .role-reveal-overlay span { font-size: 30px; }
+    .role-reveal-overlay p { color: var(--muted); font-size: 11px; font-family: 'Lora', serif; letter-spacing: .1em; text-transform: uppercase; }
 
-    /* ── Target / vote buttons ── */
+    /* ── Target buttons ── */
+    .target-list { border: 1px solid var(--line); margin-top: 12px; }
     .target-btn {
       display: block; width: 100%; text-align: left;
-      background: var(--panel2); color: var(--text);
-      border: 1px solid rgba(201,168,76,.12);
-      padding: 13px 16px; border-radius: 9px; margin-top: 8px;
-      font-size: 15px; font-weight: 500; font-family: 'Lora', serif;
-      transition: all .2s;
+      background: transparent; color: var(--text);
+      border: none; border-bottom: 1px solid var(--line);
+      padding: 14px 18px; font-size: 14px;
+      font-family: 'Lora', serif; transition: background .1s;
+      text-transform: none; letter-spacing: 0;
     }
-    .target-btn:hover { border-color: rgba(192,57,43,.6); background: rgba(122,21,21,.12); }
-    .target-btn.selected {
-      border-color: var(--red2); background: rgba(122,21,21,.2); color: #fff;
-      box-shadow: 0 0 0 1px rgba(192,57,43,.3);
-    }
-    .target-btn.vote-selected {
-      border-color: var(--gold); background: rgba(201,168,76,.12);
-      box-shadow: 0 0 0 1px rgba(201,168,76,.25);
-    }
+    .target-btn:last-child { border-bottom: none; }
+    .target-btn:not(:disabled):hover { background: rgba(255,255,255,.03); opacity: 1; }
+    .target-btn.selected  { background: rgba(122,21,21,.14); color: #fff; }
+    .target-btn.vote-selected { background: rgba(201,168,76,.07); }
 
     /* ── Night step box ── */
     .step-box {
-      background: var(--panel2); border: 1px solid rgba(201,168,76,.15);
-      border-radius: 12px; padding: 20px; margin-bottom: 16px;
-      position: relative; overflow: hidden;
+      background: var(--panel2); border: 1px solid var(--line);
+      padding: 26px 22px; margin-bottom: 0;
     }
-    .step-box::before {
-      content: '';
-      position: absolute; top: 0; left: 10%; right: 10%; height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(201,168,76,.4), transparent);
+    .step-number {
+      font-size: 10px; color: var(--muted); letter-spacing: 4px;
+      text-transform: uppercase; font-family: 'Lora', serif; margin-bottom: 12px;
     }
-    .step-number { font-size: 10px; color: var(--muted); letter-spacing: 3px; text-transform: uppercase; font-family: 'Lora', serif; }
     .step-instruction {
-      font-size: 18px; font-family: 'Playfair Display', serif;
-      font-style: italic; margin-top: 10px; line-height: 1.6; color: var(--gold);
-      text-shadow: 0 0 20px rgba(201,168,76,.2);
+      font-size: 19px; font-family: 'Playfair Display', serif;
+      font-style: italic; line-height: 1.65; color: var(--text);
     }
-    .step-progress { display: flex; gap: 5px; margin-top: 16px; }
-    .step-dot { height: 3px; flex: 1; border-radius: 2px; background: rgba(201,168,76,.12); }
-    .step-dot.done { background: rgba(201,168,76,.55); }
-    .step-dot.active { background: var(--gold); box-shadow: 0 0 6px rgba(201,168,76,.6); }
+    .step-progress { display: flex; gap: 4px; margin-top: 18px; }
+    .step-dot { height: 2px; flex: 1; background: var(--line); }
+    .step-dot.done   { background: rgba(201,168,76,.35); }
+    .step-dot.active { background: var(--gold); }
+
+    /* ── Moderator action panel ── */
+    .action-panel {
+      border: 1px solid var(--line); border-top: none;
+      background: var(--panel); margin-bottom: 14px;
+    }
+    .action-panel-head {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 20px; border-bottom: 1px solid var(--line);
+      background: var(--panel2);
+    }
+    .action-panel-head h3 {
+      font-family: 'Lora', serif; font-size: 10px;
+      letter-spacing: 4px; text-transform: uppercase; font-weight: 600; color: var(--muted);
+    }
+    .action-panel-head .ap-status {
+      font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
+      font-family: 'Lora', serif; color: var(--gold);
+    }
+    .action-row {
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding: 13px 20px; border-bottom: 1px solid var(--line);
+    }
+    .action-row:last-child { border-bottom: none; }
+    .action-label {
+      font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
+      color: var(--muted); font-family: 'Lora', serif;
+    }
+    .action-value {
+      font-size: 15px; font-family: 'Playfair Display', serif;
+    }
+    .action-value.is-mafia { color: var(--red2); }
+    .action-value.is-town  { color: #4aad7a; }
+    .action-value.is-none  { color: var(--muted); font-size: 13px; font-family: 'Lora', serif; font-style: italic; }
+    .action-footer {
+      padding: 14px 20px; border-top: 1px solid var(--line); background: var(--panel2);
+    }
 
     /* ── Link box ── */
     .link-box {
-      background: var(--panel2); border: 1px solid rgba(201,168,76,.12);
-      border-radius: 8px; padding: 10px 13px; font-family: monospace;
-      font-size: 12px; color: var(--muted); word-break: break-all; margin-top: 10px;
+      background: var(--panel2); border: 1px solid var(--line);
+      padding: 11px 14px; font-family: monospace;
+      font-size: 11px; color: var(--muted); word-break: break-all; margin-top: 10px;
     }
-
-    /* ── Player rows (lobby) ── */
-    .player-row {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 11px 4px; border-bottom: 1px solid rgba(201,168,76,.08); gap: 12px;
-    }
-    .player-row:last-child { border-bottom: none; }
-    .player-row .player-name { flex: 1; font-size: 15px; font-family: 'Lora', serif; }
-    .role-select { margin-top: 0; flex: 0 0 180px; }
 
     /* ── Sleep screen ── */
     .sleep-screen {
       display: flex; flex-direction: column; align-items: center;
-      justify-content: center; padding: 48px 0; gap: 14px;
+      justify-content: center; padding: 44px 0; gap: 12px; text-align: center;
     }
 
     /* ── Game header ── */
     .game-header {
       display: flex; justify-content: space-between; align-items: center;
-      margin-bottom: 20px; gap: 8px;
+      padding: 14px 0; border-bottom: 1px solid var(--line); margin-bottom: 0;
+    }
+    .game-header-label {
+      font-family: 'Lora', serif; font-size: 10px;
+      letter-spacing: 4px; text-transform: uppercase; color: var(--muted);
     }
 
     /* ── Voice modal ── */
     .modal-overlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,.82); z-index: 100;
+      position: fixed; inset: 0; background: rgba(0,0,0,.88); z-index: 100;
       display: flex; align-items: center; justify-content: center; padding: 20px;
-      backdrop-filter: blur(4px);
+      backdrop-filter: blur(3px);
     }
     .modal-box {
-      background: var(--panel); border: 1px solid rgba(201,168,76,.25);
-      border-radius: 16px; padding: 24px; width: 100%; max-width: 420px;
-      max-height: 80vh; display: flex; flex-direction: column; gap: 14px;
-      box-shadow: 0 24px 80px rgba(0,0,0,.8);
-      position: relative; overflow: hidden;
+      background: var(--panel); border: 1px solid var(--line);
+      width: 100%; max-width: 420px;
+      max-height: 80vh; display: flex; flex-direction: column;
+      box-shadow: 0 32px 80px rgba(0,0,0,.9); overflow: hidden;
     }
-    .modal-box::before {
-      content: '';
-      position: absolute; top: 0; left: 20%; right: 20%; height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(201,168,76,.6), transparent);
+    .modal-head {
+      padding: 20px 22px; border-bottom: 1px solid var(--line);
     }
-    .modal-box h3 { margin-bottom: 0; }
-    .voice-list { overflow-y: auto; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+    .modal-head h3 {
+      font-family: 'Lora', serif; font-size: 11px;
+      letter-spacing: 4px; text-transform: uppercase; font-weight: 600;
+      margin-top: 4px;
+    }
+    .voice-list { overflow-y: auto; display: flex; flex-direction: column; flex: 1; }
     .voice-option {
       display: flex; align-items: center; justify-content: space-between;
-      background: var(--panel2); border: 1px solid rgba(201,168,76,.1);
-      color: var(--text); padding: 11px 14px; border-radius: 9px;
-      font-size: 13px; font-weight: 500; text-align: left; cursor: pointer;
-      font-family: 'Lora', serif; transition: all .15s;
+      background: transparent; border: none; border-bottom: 1px solid var(--line);
+      color: var(--text); padding: 13px 22px;
+      font-size: 13px; text-align: left; cursor: pointer;
+      font-family: 'Lora', serif; transition: background .1s;
+      text-transform: none; letter-spacing: 0;
     }
-    .voice-option.active { border-color: var(--gold); background: rgba(201,168,76,.1); color: var(--gold); }
-    .voice-option:hover { border-color: rgba(201,168,76,.35); }
+    .voice-option.active { background: rgba(201,168,76,.06); color: var(--gold); }
+    .voice-option:hover  { background: rgba(255,255,255,.02); opacity: 1; }
+    .modal-foot { padding: 14px 22px; border-top: 1px solid var(--line); }
 
     /* ── Timer ── */
     .timer-card {
-      border-radius: 12px; padding: 18px 22px; text-align: center;
-      background: var(--panel); border: 1px solid rgba(201,168,76,.2);
-      margin-bottom: 16px; position: relative; overflow: hidden;
+      padding: 20px 22px; text-align: center;
+      background: var(--panel); border: 1px solid var(--line);
+      margin-bottom: 14px;
     }
-    .timer-card::before {
-      content: '';
-      position: absolute; top: 0; left: 20%; right: 20%; height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(201,168,76,.5), transparent);
-    }
-    .timer-card.urgent { border-color: rgba(192,57,43,.5); }
+    .timer-card.urgent { border-color: rgba(192,57,43,.4); }
     .timer-display {
       font-size: 52px; font-family: 'Playfair Display', serif;
-      font-weight: 900; color: var(--gold); line-height: 1; margin: 8px 0;
-      text-shadow: 0 0 30px rgba(201,168,76,.3);
+      font-weight: 900; color: var(--gold); line-height: 1; margin: 10px 0;
     }
-    .timer-display.urgent { color: var(--red2); text-shadow: 0 0 30px rgba(192,57,43,.4); }
-    .timer-label {
-      font-size: 10px; color: var(--muted); letter-spacing: 3px;
-      text-transform: uppercase; font-family: 'Lora', serif;
-    }
-    .timer-bar { height: 3px; border-radius: 2px; background: rgba(201,168,76,.1); margin-top: 12px; overflow: hidden; }
-    .timer-bar-fill { height: 100%; background: linear-gradient(90deg, #a8782a, var(--gold)); transition: width .5s linear; border-radius: 2px; }
-    .timer-bar-fill.urgent { background: linear-gradient(90deg, #7a1515, var(--red2)); }
+    .timer-display.urgent { color: var(--red2); }
+    .timer-label { font-size: 10px; color: var(--muted); letter-spacing: 4px; text-transform: uppercase; font-family: 'Lora', serif; }
+    .timer-bar { height: 2px; background: var(--line); margin-top: 12px; }
+    .timer-bar-fill { height: 100%; background: var(--gold); transition: width .5s linear; }
+    .timer-bar-fill.urgent { background: var(--red2); }
     .timer-btns { display: flex; gap: 8px; margin-top: 12px; }
     .timer-btns button { flex: 1; }
 
-    /* ── Votes ── */
-    .vote-bar { height: 2px; background: linear-gradient(90deg, #a8782a, var(--gold)); border-radius: 2px; margin-top: 4px; transition: width .3s; }
-    .vote-count { float: right; font-size: 12px; color: var(--muted); font-family: 'Lora', serif; }
-    .vote-leading { color: var(--red2); font-weight: 700; }
+    /* ── Vote bar ── */
+    .vote-bar { height: 1px; background: var(--gold); margin-top: 5px; transition: width .3s; }
+    .vote-leading { color: var(--red2); }
 
-    /* ── Home screen hero ── */
-    .hero-dagger { font-size: 56px; filter: drop-shadow(0 0 24px rgba(201,168,76,.35)); }
-    .hero-title {
-      font-family: 'Playfair Display', serif; font-size: 48px; font-weight: 900;
-      background: linear-gradient(160deg, var(--gold2) 0%, var(--gold) 50%, #a8782a 100%);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-      background-clip: text; margin: 10px 0 6px;
-      letter-spacing: .04em; line-height: 1.1;
+    /* ── Player table (night/day) ── */
+    .p-table { border: 1px solid var(--line); margin-top: 14px; }
+    .p-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 18px; border-bottom: 1px solid var(--line); gap: 12px;
     }
-    .hero-sub { color: var(--muted); font-size: 13px; font-style: italic; letter-spacing: .06em; }
+    .p-row:last-child { border-bottom: none; }
+
+    /* ── Home hero ── */
+    .hero-wrap {
+      padding: 44px 0 30px; text-align: center;
+      border-bottom: 1px solid var(--line); margin-bottom: 0;
+    }
+    .hero-eyebrow {
+      font-family: 'Lora', serif; font-size: 10px; letter-spacing: 5px;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 18px;
+    }
+    .hero-title {
+      font-family: 'Playfair Display', serif; font-size: 80px; font-weight: 900;
+      color: var(--text); line-height: 1; margin-bottom: 18px;
+    }
+    .hero-est {
+      display: flex; align-items: center; justify-content: center; gap: 18px;
+      font-family: 'Lora', serif; font-size: 10px; letter-spacing: 4px;
+      text-transform: uppercase; color: var(--muted);
+    }
+    .hero-est::before, .hero-est::after {
+      content: ''; width: 56px; height: 1px; background: var(--muted); opacity: .35;
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 3px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--line); }
   </style>
 </head>
 <body>
@@ -465,7 +473,7 @@ const RI = {
   villager:  { label:'Villager',  emoji:'🧑', color:'#a09070', team:'town',  desc:'You have no special power. Use discussion and deduction during the day to identify and vote out the Mafia.' },
 };
 const uid = () => Math.random().toString(36).slice(2,9);
-const makeCode = () => Math.floor(1000 + Math.random()*9000).toString();
+const makeCode = () => Array.from(crypto.getRandomValues(new Uint8Array(9))).map(b=>b.toString(36).padStart(2,'0')).join('').slice(0,16);
 const nameOf = (players, id) => players.find(p => p.id === id)?.name ?? null;
 
 /* ── Auto-assign roles ── */
@@ -475,10 +483,8 @@ function autoAssignRoles(players) {
   if (n === 0) return {};
   const roles = [];
   if (n >= 3) {
-    // Always 1 doctor + 1 detective
     roles.push('doctor', 'detective');
     const remaining = n - 2;
-    // 1 mafia for up to 3 villagers, 2 for 4-5, 3 for 6+
     let mafiaCount;
     if (remaining <= 4) mafiaCount = 1;
     else if (remaining <= 7) mafiaCount = 2;
@@ -490,7 +496,6 @@ function autoAssignRoles(players) {
     roles.push('mafia');
   }
   while (roles.length < n) roles.push('villager');
-  // Fisher-Yates shuffle
   for (let i = roles.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [roles[i], roles[j]] = [roles[j], roles[i]];
@@ -505,7 +510,7 @@ function timerRemaining(timer) {
 }
 
 /* ══════════════════════════════════════════════
-   VOICE SETTINGS MODAL
+   VOICE MODAL
 ══════════════════════════════════════════════ */
 function VoiceModal({onClose, onSelect}) {
   const [voices, setVoices] = useState([]);
@@ -526,39 +531,44 @@ function VoiceModal({onClose, onSelect}) {
     setSelected(name);
     setVoiceName(name);
     onSelect && onSelect(name);
-    speak('Hello, testing voice for Mafia game.');
+    speak('The city never sleeps. Neither does the Mafia.');
   }
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-box" onClick={e=>e.stopPropagation()}>
-        <div>
-          <h3>🔊 Choose narrator voice</h3>
-          <p className="muted" style={{marginTop:4}}>Tap a voice to preview it.</p>
+        <div className="modal-head">
+          <p className="eyebrow">Narrator</p>
+          <h3>Choose Voice</h3>
         </div>
         <div className="voice-list">
-          {voices.length === 0 && <p className="muted">Loading voices…</p>}
+          {voices.length === 0 && <p className="muted" style={{padding:'20px 22px'}}>Loading voices…</p>}
           {voices.map(v => (
             <button key={v.name} className={`voice-option${selected===v.name?' active':''}`} onClick={()=>pick(v.name)}>
               <span>{v.name}</span>
-              <span style={{color:'var(--muted)',fontSize:11,fontWeight:400}}>{v.lang}{v.default?' · default':''}{selected===v.name?' ✓':''}</span>
+              <span style={{color:'var(--muted)',fontSize:10,letterSpacing:1}}>
+                {v.lang}{v.default?' · default':''}{selected===v.name?' ✓':''}
+              </span>
             </button>
           ))}
         </div>
-        <button className="btn-secondary" onClick={onClose}>Done</button>
+        <div className="modal-foot">
+          <button className="btn-secondary" style={{marginTop:0}} onClick={onClose}>Close</button>
+        </div>
       </div>
     </div>
   );
 }
 
 /* ══════════════════════════════════════════════
-   GAME HEADER  (voice + exit buttons)
+   GAME HEADER
 ══════════════════════════════════════════════ */
-function GameHeader({onVoice, onExit}) {
+function GameHeader({onVoice, onExit, label}) {
   return (
     <div className="game-header">
       <button className="btn-exit" onClick={onExit}>← Exit</button>
-      {onVoice && <button className="btn-voice" onClick={onVoice}>🔊 Voice</button>}
+      {label && <span className="game-header-label">{label}</span>}
+      {onVoice && <button className="btn-voice" onClick={onVoice}>Voice</button>}
     </div>
   );
 }
@@ -588,7 +598,7 @@ function TimerDisplay({timer}) {
 
   return (
     <div className={`timer-card${urgent?' urgent':''}`}>
-      <div className="timer-label">{done ? '⏰ Time\'s up — vote now!' : 'Discussion timer'}</div>
+      <div className="timer-label">{done ? 'Time\'s Up — Vote Now' : 'Discussion Timer'}</div>
       <div className={`timer-display${urgent?' urgent':''}`}>
         {mins}:{String(secs).padStart(2,'0')}
       </div>
@@ -612,18 +622,17 @@ function App() {
   const [room, setRoom]     = useState(null);
   const [myName, setMyName] = useState('');
   const [nameInput, setNameInput] = useState('');
-  const [joinCode, setJoinCode]   = useState('');
-  const [error, setError]   = useState('');
+  const [nameErr, setNameErr] = useState('');
   const [showVoice, setShowVoice] = useState(false);
-  const modFlag   = useRef(false);
-  const codeRef   = useRef(null);
-  const prevTick  = useRef(0);
+  const modFlag  = useRef(false);
+  const codeRef  = useRef(null);
+  const prevTick = useRef(0);
 
   useEffect(() => {
     const urlRoom = qp('room');
     if (urlRoom) {
       const r = getRoom(urlRoom);
-      if (!r) { setError('Room not found.'); setScreen('home'); return; }
+      if (!r) { setCodeErr('Room not found.'); setScreen('home'); return; }
       codeRef.current = urlRoom;
       const me = r.players.find(p => p.id === myId);
       if (me) {
@@ -667,13 +676,9 @@ function App() {
     const u = new URL(location);
     u.searchParams.delete('room');
     history.replaceState({}, '', u);
-    setRoom(null);
-    setScreen('home');
-    setError('');
+    setRoom(null); setScreen('home'); setNameErr('');
     setNameInput('');
-    setJoinCode('');
-    codeRef.current = null;
-    modFlag.current = false;
+    codeRef.current = null; modFlag.current = false;
   }
 
   function exitGame() {
@@ -682,15 +687,13 @@ function App() {
     if (modFlag.current) {
       if (!confirm('You are the moderator. Leaving will keep the room but remove your controls. Exit anyway?')) return;
     }
-    upd(r => {
-      r.players = r.players.filter(p => p.id !== myId);
-      return r;
-    });
+    upd(r => { r.players = r.players.filter(p => p.id !== myId); return r; });
     goHome();
   }
 
   function createRoom() {
-    if (!nameInput.trim()) { setError('Enter your name'); return; }
+    setNameErr('');
+    if (!nameInput.trim()) { setNameErr('Enter your name'); return; }
     const code = makeCode();
     const modId = myId;
     const r = {
@@ -708,83 +711,72 @@ function App() {
     setMyName(nameInput.trim());
     setRoom(r);
     setScreen('mod');
-    setError('');
-  }
-
-  function joinByCode() {
-    if (!nameInput.trim()) { setError('Enter your name'); return; }
-    if (!/^\d{4}$/.test(joinCode)) { setError('Enter a valid 4-digit code'); return; }
-    const r = getRoom(joinCode);
-    if (!r) { setError('Room not found'); return; }
-    if (r.phase !== 'lobby') { setError('Game already started'); return; }
-    if (r.players.length >= 10) { setError('Room is full (10 max)'); return; }
-    if (r.players.some(p => p.name.toLowerCase() === nameInput.trim().toLowerCase())) { setError('Name already taken'); return; }
-    r.players.push({id:myId, name:nameInput.trim(), role:null, alive:true, isMod:false});
-    saveRoom(r);
-    codeRef.current = joinCode;
-    setQP('room', joinCode);
-    setMyName(nameInput.trim());
-    setRoom(r);
-    setScreen('player');
-    setError('');
   }
 
   function joinByLink() {
-    if (!nameInput.trim()) { setError('Enter your name'); return; }
+    setNameErr('');
+    if (!nameInput.trim()) { setNameErr('Enter your name'); return; }
     const code = codeRef.current;
     const r = getRoom(code);
-    if (!r) { setError('Room not found'); return; }
-    if (r.phase !== 'lobby') { setError('Game already started'); return; }
-    if (r.players.length >= 10) { setError('Room is full'); return; }
-    if (r.players.some(p => p.name.toLowerCase() === nameInput.trim().toLowerCase())) { setError('Name already taken'); return; }
+    if (!r) { setNameErr('Room not found'); return; }
+    if (r.phase !== 'lobby') { setNameErr('Game already started'); return; }
+    if (r.players.length >= 10) { setNameErr('Room is full'); return; }
+    if (r.players.some(p => p.name.toLowerCase() === nameInput.trim().toLowerCase())) { setNameErr('Name already taken'); return; }
     r.players.push({id:myId, name:nameInput.trim(), role:null, alive:true, isMod:false});
     saveRoom(r);
     setMyName(nameInput.trim());
     setRoom(r);
     setScreen('player');
-    setError('');
   }
 
-  if (screen === 'loading') return <div style={{color:'var(--muted)',textAlign:'center',paddingTop:120}}>Loading…</div>;
+  if (screen === 'loading') return (
+    <div style={{color:'var(--muted)',textAlign:'center',paddingTop:120,letterSpacing:4,fontSize:11,textTransform:'uppercase'}}>Loading…</div>
+  );
 
   if (screen === 'home') return (
     <div className="wrap">
-      <div className="center" style={{marginBottom:32}}>
-        <div className="hero-dagger">🔪</div>
+      <div className="hero-wrap">
+        <p className="hero-eyebrow">A Game of Whispers &amp; Shadows</p>
         <h1 className="hero-title">Mafia</h1>
-        <p className="hero-sub">Up to 10 players · voice narration · moderator-controlled</p>
+        <div className="hero-est">Est. 1924</div>
       </div>
-      <div className="card">
-        <h3>Your name</h3>
-        <input value={nameInput} onChange={e=>setNameInput(e.target.value)} placeholder="e.g. Deepesh" maxLength={20} onKeyDown={e=>e.key==='Enter'&&createRoom()}/>
+
+      <div className="card" style={{marginTop:0,borderTop:'none'}}>
+        <p className="eyebrow" style={{marginBottom:8}}>Your Identity</p>
+        <input value={nameInput} onChange={e=>{setNameInput(e.target.value);setNameErr('');}}
+          placeholder="Enter your name" maxLength={20}
+          onKeyDown={e=>e.key==='Enter'&&createRoom()}
+          style={{marginTop:4,borderColor:nameErr?'var(--red2)':''}}/>
+        {nameErr && <p style={{color:'var(--red2)',fontSize:11,marginTop:6,letterSpacing:.5}}>{nameErr}</p>}
       </div>
-      <div className="card">
-        <h3>Host a game</h3>
-        <p className="muted" style={{marginTop:4}}>You assign roles and control each phase.</p>
-        <button className="btn-primary" onClick={createRoom}>Create room</button>
+
+      <div className="card" style={{marginBottom:16,borderTop:'none'}}>
+        <p className="eyebrow" style={{marginBottom:6}}>Host</p>
+        <p className="muted" style={{fontSize:12,marginBottom:8}}>Control every phase as moderator. Players join via your private invite link.</p>
+        <button className="btn-primary" onClick={createRoom}>Create Room</button>
       </div>
-      <div className="card">
-        <h3>Join a game</h3>
-        <input value={joinCode} onChange={e=>setJoinCode(e.target.value.replace(/\D/g,'').slice(0,4))} placeholder="4-digit room code" onKeyDown={e=>e.key==='Enter'&&joinByCode()}/>
-        <button className="btn-secondary" onClick={joinByCode}>Join room</button>
-      </div>
-      {error && <div className="card err-box"><p>{error}</p></div>}
+
+      <p style={{textAlign:'center',fontSize:10,letterSpacing:3,color:'var(--muted)',marginTop:8,textTransform:'uppercase'}}>
+        Host Creates · Share Private Link · 5 to 10 Souls
+      </p>
     </div>
   );
 
   if (screen === 'join-link') return (
     <div className="wrap">
-      <div className="center" style={{marginBottom:24}}>
-        <div style={{fontSize:48}}>🕯️</div>
-        <h2 style={{marginTop:8}}>You're invited</h2>
-        <p className="muted">Room <b style={{color:'var(--gold)'}}>{codeRef.current}</b></p>
+      <div className="hero-wrap" style={{padding:'32px 0 24px'}}>
+        <p className="hero-eyebrow">You're Invited</p>
+        <h2 style={{fontSize:36,marginTop:8}}>You've Been Invited</h2>
       </div>
-      <div className="card">
-        <h3>Enter your name to join</h3>
-        <input value={nameInput} onChange={e=>setNameInput(e.target.value)} placeholder="Your name" maxLength={20} onKeyDown={e=>e.key==='Enter'&&joinByLink()}/>
-        <button className="btn-primary" onClick={joinByLink}>Join game</button>
+      <div className="card" style={{borderTop:'none'}}>
+        <p className="eyebrow" style={{marginBottom:8}}>Your Name</p>
+        <input value={nameInput} onChange={e=>{setNameInput(e.target.value);setNameErr('');}}
+          placeholder="Enter your name" maxLength={20}
+          onKeyDown={e=>e.key==='Enter'&&joinByLink()}
+          style={{marginTop:4,borderColor:nameErr?'var(--red2)':''}}/>
+        {nameErr && <p style={{color:'var(--red2)',fontSize:11,marginTop:6,letterSpacing:.5}}>{nameErr}</p>}
+        <button className="btn-primary" onClick={joinByLink}>Join the Game</button>
       </div>
-      {error && <div className="card err-box"><p>{error}</p></div>}
     </div>
   );
 
@@ -853,54 +845,55 @@ function ModLobby({room, upd, joinUrl, onVoice, onExit}) {
 
   return (
     <div className="wrap">
-      <GameHeader onVoice={onVoice} onExit={onExit}/>
-      <div className="center" style={{marginBottom:16}}>
-        <div className="small-caps">Room code</div>
-        <div className="code">{room.code}</div>
-      </div>
+      <GameHeader onVoice={onVoice} onExit={onExit} label="Moderator"/>
 
-      <div className="card">
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-          <h3>Invite players</h3>
-          <button className="btn-sm" onClick={copyLink}>📋 Copy link</button>
+      {/* Invite */}
+      <div className="card" style={{borderTop:'none',marginBottom:0}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+          <p className="eyebrow">Private Invite Link</p>
+          <span style={{fontSize:11,color:'var(--muted)',letterSpacing:1}}>{room.players.length}/10 players</span>
         </div>
+        <p className="muted" style={{fontSize:11,marginBottom:10,letterSpacing:.3}}>Share this link with your players. Only people with this link can join your room.</p>
         <div className="link-box">{joinUrl}</div>
-        <p className="muted" style={{marginTop:8}}>{room.players.length}/10 players joined — share the link or code above.</p>
+        <button className="btn-primary" style={{marginTop:10}} onClick={copyLink}>Copy Invite Link</button>
       </div>
 
-      <div className="card">
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
-          <h3>Assign roles</h3>
-          <div style={{display:'flex',gap:8,alignItems:'center'}}>
-            <span className="muted" style={{fontSize:12}}>
+      {/* Assign roles */}
+      <div className="card" style={{borderTop:'none',marginBottom:16}}>
+        <div className="section-head">
+          <p className="eyebrow">Assign Roles</p>
+          <div style={{display:'flex',gap:10,alignItems:'center'}}>
+            <span style={{fontSize:11,color:'var(--muted)',letterSpacing:1}}>
               {counts.mafia||0}🔪 {counts.doctor||0}💉 {counts.detective||0}🔍 {counts.villager||0}🧑
             </span>
-            {nonMod.length > 0 && (
-              <button className="btn-gold-sm" onClick={randomize}>🎲 Auto</button>
-            )}
+            {nonMod.length > 0 && <button className="btn-gold-sm" onClick={randomize}>Auto Assign</button>}
           </div>
         </div>
 
-        {nonMod.length === 0 && <p className="muted">No players yet — share the link above.</p>}
-
-        {room.players.map(p => (
-          <div key={p.id} className="player-row">
-            <span className="player-name">{p.name}</span>
-            {p.isMod
-              ? <span className="pill pill-mod">Moderator</span>
-              : <select className="role-select" value={roles[p.id]||''} onChange={e=>setRoles(r=>({...r,[p.id]:e.target.value}))}>
-                  <option value="">— pick role —</option>
-                  {ROLES.map(r => <option key={r} value={r}>{RI[r].emoji} {RI[r].label}</option>)}
-                </select>}
-          </div>
-        ))}
+        {nonMod.length === 0
+          ? <p className="muted" style={{fontSize:12}}>No players yet — share the invite link above.</p>
+          : room.players.map((p, i) => (
+            <div key={p.id} className="player-row">
+              <span className="player-num">{String(i+1).padStart(2,'0')}</span>
+              <span className="player-name">{p.name}</span>
+              {p.isMod
+                ? <span className="pill pill-mod">Moderator</span>
+                : <select className="role-select" value={roles[p.id]||''}
+                    onChange={e=>setRoles(r=>({...r,[p.id]:e.target.value}))}>
+                    <option value="">— pick role —</option>
+                    {ROLES.map(r => <option key={r} value={r}>{RI[r].emoji} {RI[r].label}</option>)}
+                  </select>}
+            </div>
+          ))
+        }
 
         {!allAssigned && nonMod.length > 0 && (
-          <p className="muted" style={{marginTop:10}}>Assign a role to every player, or tap 🎲 Auto.</p>
+          <p className="muted" style={{marginTop:12,fontSize:11,letterSpacing:1}}>Assign a role to every player, or use Auto Assign.</p>
         )}
-        {allAssigned && !mafiaOk && <p className="warn" style={{marginTop:10}}>⚠️ At least one Mafia member is required.</p>}
-        <button className="btn-primary" disabled={!allAssigned||!mafiaOk} onClick={startGame} style={{marginTop:14}}>
-          Start game →
+        {allAssigned && !mafiaOk && <p className="warn" style={{marginTop:12}}>⚠ At least one Mafia member is required.</p>}
+
+        <button className="btn-primary" disabled={!allAssigned||!mafiaOk} onClick={startGame}>
+          ▶ Start Game
         </button>
       </div>
     </div>
@@ -941,9 +934,7 @@ function ModNight({room, upd, onVoice, onExit}) {
           r.detectiveResult = cp ? {name:cp.name, isMafia:cp.role==='mafia'} : null;
         }
         r.lastDeath = death;
-        r.phase = 'day';
-        r.votes = {};
-        r.dayTimer = null;
+        r.phase = 'day'; r.votes = {}; r.dayTimer = null;
         r.speakTick = (r.speakTick||0)+1;
         r.speakText = death
           ? `The sun rises. Last night, ${death} was found dead.`
@@ -954,12 +945,16 @@ function ModNight({room, upd, onVoice, onExit}) {
   }
 
   const players = room.players.filter(p=>!p.isMod);
+  const dcId = room.nightActions.detectiveCheck;
+  const dcPlayer = dcId ? room.players.find(p=>p.id===dcId) : null;
+  const alreadyRevealed = room.detectiveResult && dcPlayer && room.detectiveResult.name === dcPlayer.name;
 
   return (
     <div className="wrap">
-      <GameHeader onVoice={onVoice} onExit={onExit}/>
+      <GameHeader onVoice={onVoice} onExit={onExit} label="Moderator"/>
       <div className="badge-phase">🌙 Night {room.round}</div>
 
+      {/* Narration */}
       <div className="step-box">
         <div className="step-number">Step {stepIdx+1} of {script.length}</div>
         <div className="step-instruction">"{step.speak}"</div>
@@ -970,64 +965,97 @@ function ModNight({room, upd, onVoice, onExit}) {
         </div>
       </div>
 
+      {/* Mafia action panel */}
       {step.show === 'mafia' && (
-        <div className="card">
-          <h3>🔪 Mafia choosing…</h3>
-          <p className="muted" style={{marginTop:6}}>Current target: <b style={{color:'var(--text)'}}>{nameOf(room.players,room.nightActions.mafiaTarget)||'none yet'}</b></p>
-        </div>
-      )}
-      {step.show === 'doctor' && (
-        <div className="card">
-          <h3>💉 Doctor choosing…</h3>
-          <p className="muted" style={{marginTop:6}}>Protecting: <b style={{color:'var(--text)'}}>{nameOf(room.players,room.nightActions.doctorSave)||'none yet'}</b></p>
-        </div>
-      )}
-      {step.show === 'detective' && (() => {
-        const dcId = room.nightActions.detectiveCheck;
-        const cp = dcId ? room.players.find(p => p.id === dcId) : null;
-        const alreadyRevealed = room.detectiveResult && cp && room.detectiveResult.name === cp.name;
-        return (
-          <div className="card">
-            <h3>🔍 Detective investigating…</h3>
-            <p className="muted" style={{marginTop:6}}>Checking: <b style={{color:'var(--text)'}}>{cp?.name || 'none yet'}</b></p>
-            {cp && (
-              <>
-                <p style={{marginTop:8,fontSize:13}}>
-                  Identity: <b style={{color:cp.role==='mafia'?'var(--red2)':'var(--green)'}}>
-                    {cp.role==='mafia' ? '🔪 Mafia' : '✓ Not Mafia'}
-                  </b>
-                </p>
-                {alreadyRevealed
-                  ? <p style={{marginTop:10,fontSize:12,color:'var(--green)'}}>✓ Result revealed to detective</p>
-                  : <button className="btn-gold-sm" style={{marginTop:10}} onClick={()=>upd(r=>{
-                      const p2 = r.players.find(x=>x.id===dcId);
-                      r.detectiveResult = p2 ? {name:p2.name, isMafia:p2.role==='mafia'} : null;
-                      return r;
-                    })}>Reveal to Detective</button>
-                }
-              </>
-            )}
+        <div className="action-panel">
+          <div className="action-panel-head">
+            <h3>Mafia</h3>
+            <span className="ap-status">Choosing Target</span>
           </div>
-        );
-      })()}
+          <div className="action-row">
+            <span className="action-label">Target</span>
+            <span className={`action-value${nameOf(room.players,room.nightActions.mafiaTarget)?'':' is-none'}`}>
+              {nameOf(room.players,room.nightActions.mafiaTarget) || 'None selected'}
+            </span>
+          </div>
+        </div>
+      )}
 
-      <button className="btn-primary" onClick={next}>
-        {isLast ? '☀️ Wake the city' : 'Next →'}
+      {/* Doctor action panel */}
+      {step.show === 'doctor' && (
+        <div className="action-panel">
+          <div className="action-panel-head">
+            <h3>Doctor</h3>
+            <span className="ap-status">Saving</span>
+          </div>
+          <div className="action-row">
+            <span className="action-label">Protecting</span>
+            <span className={`action-value${nameOf(room.players,room.nightActions.doctorSave)?'':' is-none'}`}>
+              {nameOf(room.players,room.nightActions.doctorSave) || 'None selected'}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Detective action panel */}
+      {step.show === 'detective' && (
+        <div className="action-panel">
+          <div className="action-panel-head">
+            <h3>Detective</h3>
+            <span className="ap-status">Investigating</span>
+          </div>
+          <div className="action-row">
+            <span className="action-label">Target</span>
+            <span className={`action-value${dcPlayer?'':' is-none'}`}>
+              {dcPlayer?.name || 'None selected'}
+            </span>
+          </div>
+          {dcPlayer && (
+            <div className="action-row">
+              <span className="action-label">True Identity</span>
+              <span className={`action-value ${dcPlayer.role==='mafia'?'is-mafia':'is-town'}`}>
+                {dcPlayer.role==='mafia' ? '🔪 Mafia' : '✓ Not Mafia'}
+              </span>
+            </div>
+          )}
+          {dcPlayer && (
+            <div className="action-footer">
+              {alreadyRevealed
+                ? <p style={{fontSize:10,letterSpacing:3,color:'var(--green)',textTransform:'uppercase'}}>
+                    ✓ Identity Revealed to Detective
+                  </p>
+                : <button className="btn-gold-sm" style={{width:'100%'}} onClick={()=>upd(r=>{
+                    const p2 = r.players.find(x=>x.id===dcId);
+                    r.detectiveResult = p2 ? {name:p2.name, isMafia:p2.role==='mafia'} : null;
+                    return r;
+                  })}>
+                    Reveal Identity to Detective
+                  </button>
+              }
+            </div>
+          )}
+        </div>
+      )}
+
+      <button className="btn-primary" onClick={next} style={{marginBottom:20}}>
+        {isLast ? '☀ Wake the City' : 'Next Step →'}
       </button>
 
-      <div className="card" style={{marginTop:14}}>
-        <h3>Players</h3>
-        <ul className="plist">
-          {players.map(p => (
-            <li key={p.id}>
-              <span>
-                {p.name}
-                <span style={{marginLeft:8,fontSize:12,color:RI[p.role]?.color}}>{RI[p.role]?.emoji} {RI[p.role]?.label}</span>
+      {/* Players roster */}
+      <p className="eyebrow" style={{marginBottom:10}}>Players</p>
+      <div className="p-table">
+        {players.map((p,i) => (
+          <div key={p.id} className="p-row">
+            <span style={{display:'flex',alignItems:'center',gap:12}}>
+              <span className="player-num">{String(i+1).padStart(2,'0')}</span>
+              <span style={{fontSize:14}}>{p.name}</span>
+              <span style={{fontSize:10,color:RI[p.role]?.color,letterSpacing:2,textTransform:'uppercase'}}>
+                {RI[p.role]?.emoji} {RI[p.role]?.label}
               </span>
-              {p.alive ? <span className="pill pill-alive">alive</span> : <span className="pill pill-dead">dead</span>}
-            </li>
-          ))}
-        </ul>
+            </span>
+            {p.alive ? <span className="pill pill-alive">Alive</span> : <span className="pill pill-dead">Dead</span>}
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -1041,7 +1069,6 @@ function ModDay({room, upd, onVoice, onExit}) {
   const aliveTown  = players.filter(p=>p.alive&&p.role!=='mafia').length;
   const gameOver   = aliveMafia===0 || aliveMafia>=aliveTown;
 
-  /* vote tally */
   const votes = room.votes || {};
   const voteCounts = {};
   Object.values(votes).forEach(tid => { voteCounts[tid] = (voteCounts[tid]||0)+1; });
@@ -1052,15 +1079,12 @@ function ModDay({room, upd, onVoice, onExit}) {
   function toggleDead(pid) {
     upd(r => { r.players = r.players.map(p=>p.id===pid?{...p,alive:!p.alive}:p); return r; });
   }
-
   function startTimer(duration) {
     upd(r => { r.dayTimer = { duration, startAt: Date.now() }; return r; });
   }
-
   function clearTimer() {
     upd(r => { r.dayTimer = null; return r; });
   }
-
   function beginNight() {
     upd(r => {
       const round = r.round+1;
@@ -1069,8 +1093,7 @@ function ModDay({room, upd, onVoice, onExit}) {
       r.round = round; r.phase = 'night'; r.nightStep = 0;
       r.nightScript = buildScript(round, hasDoc, hasDet);
       r.nightActions = {mafiaTarget:null,doctorSave:null,detectiveCheck:null};
-      r.detectiveResult = null;
-      r.votes = {}; r.dayTimer = null;
+      r.detectiveResult = null; r.votes = {}; r.dayTimer = null;
       r.speakTick = (r.speakTick||0)+1;
       r.speakText = r.nightScript[0].speak;
       return r;
@@ -1079,90 +1102,122 @@ function ModDay({room, upd, onVoice, onExit}) {
 
   return (
     <div className="wrap">
-      <GameHeader onVoice={onVoice} onExit={onExit}/>
-      <div className="badge-phase">☀️ Day {room.round}</div>
+      <GameHeader onVoice={onVoice} onExit={onExit} label="Moderator"/>
+      <div className="badge-phase">☀ Day {room.round}</div>
 
       {gameOver ? (
-        <div className="card center" style={{padding:'40px 22px'}}>
-          <div style={{fontSize:48}}>{aliveMafia===0?'🏆':'🔪'}</div>
-          <h2 style={{marginTop:12,fontSize:28}}>{aliveMafia===0?'Town wins!':'Mafia wins!'}</h2>
-          <p className="muted" style={{marginTop:8}}>{aliveMafia===0?'All Mafia have been eliminated.':'Mafia equals or outnumbers the Town.'}</p>
+        <div style={{textAlign:'center',padding:'60px 0'}}>
+          <p className="eyebrow" style={{marginBottom:14}}>{aliveMafia===0?'Town Victory':'Mafia Victory'}</p>
+          <h2 style={{fontSize:44,fontFamily:'Playfair Display,serif',marginBottom:10}}>
+            {aliveMafia===0?'Town Wins':'Mafia Wins'}
+          </h2>
+          <p className="muted">{aliveMafia===0?'All Mafia eliminated.':'Mafia equals or outnumbers Town.'}</p>
         </div>
       ) : (
         <>
-          <div className="card">
-            {room.lastDeath
-              ? <p style={{fontSize:16}}>☠️ <b style={{color:'var(--red2)'}}>{room.lastDeath}</b> was found dead this morning.</p>
-              : <p style={{fontSize:16}}>🌅 No one was killed last night.</p>}
+          {/* Night report */}
+          <div className="action-panel" style={{borderTop:'1px solid var(--line)'}}>
+            <div className="action-panel-head">
+              <h3>Night Report</h3>
+              <span className="ap-status">Round {room.round}</span>
+            </div>
+            <div className="action-row">
+              <span className="action-label">Eliminated</span>
+              <span className={`action-value ${room.lastDeath?'is-mafia':'is-none'}`}>
+                {room.lastDeath || 'No one'}
+              </span>
+            </div>
             {room.detectiveResult && (
-              <p className="muted" style={{marginTop:10,fontSize:13}}>
-                🔍 Detective result (private): <b style={{color:'var(--text)'}}>{room.detectiveResult.name}</b> is{' '}
-                <b style={{color:room.detectiveResult.isMafia?'var(--red2)':'var(--green)'}}>{room.detectiveResult.isMafia?'Mafia':'not Mafia'}</b>.
-              </p>
+              <div className="action-row">
+                <span className="action-label">Detective Intel</span>
+                <span className={`action-value ${room.detectiveResult.isMafia?'is-mafia':'is-town'}`}>
+                  {room.detectiveResult.name} — {room.detectiveResult.isMafia?'Mafia':'Not Mafia'}
+                </span>
+              </div>
             )}
           </div>
 
-          {/* Timer controls */}
-          <div className="card">
-            <h3>Discussion timer</h3>
+          {/* Discussion timer */}
+          <div className="action-panel" style={{borderTop:'none',marginTop:0}}>
+            <div className="action-panel-head">
+              <h3>Discussion Timer</h3>
+            </div>
             {room.dayTimer ? (
-              <>
+              <div style={{padding:'14px 20px'}}>
                 <TimerDisplay timer={room.dayTimer}/>
-                <button className="btn-secondary" onClick={clearTimer} style={{marginTop:8}}>Stop timer</button>
-              </>
+                <button className="btn-secondary" onClick={clearTimer} style={{marginTop:8}}>Stop Timer</button>
+              </div>
             ) : (
-              <>
-                <p className="muted" style={{marginTop:6,marginBottom:10}}>Start a countdown for players to discuss.</p>
+              <div style={{padding:'14px 20px'}}>
+                <p className="muted" style={{marginBottom:12,fontSize:11,letterSpacing:1}}>Set a countdown for discussion.</p>
                 <div className="timer-btns">
                   <button className="btn-gold-sm" onClick={()=>startTimer(300)}>5 min</button>
                   <button className="btn-gold-sm" onClick={()=>startTimer(600)}>10 min</button>
                 </div>
-              </>
+              </div>
             )}
           </div>
 
           {/* Vote tally */}
-          <div className="card">
-            <h3>Live vote tally</h3>
-            <p className="muted" style={{marginTop:4,marginBottom:10}}>{Object.keys(votes).length}/{totalVoters} voted</p>
-            {alivePlayers.length === 0 && <p className="muted">No alive players.</p>}
-            {alivePlayers.map(p => {
-              const vc = voteCounts[p.id] || 0;
-              const isLeader = leaders.includes(p) && maxVotes > 0;
-              const pct = totalVoters ? (vc / totalVoters) * 100 : 0;
-              return (
-                <div key={p.id} style={{marginBottom:10}}>
-                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                    <span className={isLeader?'vote-leading':''} style={{fontSize:14}}>{p.name}</span>
-                    <span style={{fontSize:12,color:isLeader?'var(--red2)':'var(--muted)'}}>{vc} vote{vc!==1?'s':''}{isLeader?' 🎯':''}</span>
+          <div className="action-panel" style={{borderTop:'none',marginTop:0}}>
+            <div className="action-panel-head">
+              <h3>Live Vote Tally</h3>
+              <span className="ap-status">{Object.keys(votes).length} / {totalVoters} Voted</span>
+            </div>
+            {alivePlayers.length === 0
+              ? <div style={{padding:'14px 20px'}}><p className="muted">No alive players.</p></div>
+              : alivePlayers.map((p,i) => {
+                const vc = voteCounts[p.id] || 0;
+                const isLeader = leaders.includes(p) && maxVotes > 0;
+                const pct = totalVoters ? (vc/totalVoters)*100 : 0;
+                return (
+                  <div key={p.id} style={{
+                    padding:'12px 20px',
+                    borderBottom: i<alivePlayers.length-1?'1px solid var(--line)':'none'
+                  }}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                      <span style={{fontSize:14,color:isLeader?'var(--red2)':'var(--text)'}} className={isLeader?'vote-leading':''}>
+                        {p.name}
+                      </span>
+                      <span style={{fontSize:10,letterSpacing:2,color:isLeader?'var(--red2)':'var(--muted)',textTransform:'uppercase'}}>
+                        {vc} vote{vc!==1?'s':''}
+                      </span>
+                    </div>
+                    {vc > 0 && <div className="vote-bar" style={{width:`${pct}%`,marginTop:6}}/>}
                   </div>
-                  {vc > 0 && <div className="vote-bar" style={{width:`${pct}%`}}/>}
-                </div>
-              );
-            })}
+                );
+              })
+            }
           </div>
 
-          <div className="card">
-            <h3>Players &amp; roles</h3>
-            <p className="muted" style={{marginTop:4,marginBottom:10}}>Mark the voted-out player dead, then start the next night.</p>
-            <ul className="plist">
-              {players.map(p => (
-                <li key={p.id}>
-                  <span>
-                    {p.name}
-                    <span style={{marginLeft:8,fontSize:12,color:RI[p.role]?.color}}>{RI[p.role]?.emoji} {RI[p.role]?.label}</span>
+          {/* Players & roles */}
+          <div className="action-panel" style={{borderTop:'none',marginTop:0,marginBottom:0}}>
+            <div className="action-panel-head">
+              <h3>Players &amp; Roles</h3>
+              <span className="muted" style={{fontSize:10,letterSpacing:2}}>Mark eliminations below</span>
+            </div>
+            {players.map((p,i) => (
+              <div key={p.id} className="p-row" style={{borderBottom:i<players.length-1?'1px solid var(--line)':'none'}}>
+                <span style={{display:'flex',alignItems:'center',gap:12,flex:1}}>
+                  <span className="player-num">{String(i+1).padStart(2,'0')}</span>
+                  <span style={{fontSize:14}}>{p.name}</span>
+                  <span style={{fontSize:10,color:RI[p.role]?.color,letterSpacing:2,textTransform:'uppercase'}}>
+                    {RI[p.role]?.emoji} {RI[p.role]?.label}
                   </span>
-                  <span style={{display:'flex',gap:8,alignItems:'center'}}>
-                    {p.alive ? <span className="pill pill-alive">alive</span> : <span className="pill pill-dead">dead</span>}
-                    {p.alive
-                      ? <button className="btn-danger-sm"  onClick={()=>toggleDead(p.id)}>mark dead</button>
-                      : <button className="btn-success-sm" onClick={()=>toggleDead(p.id)}>revive</button>}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            <button className="btn-primary" onClick={beginNight} style={{marginTop:12}}>🌙 Begin Night {room.round+1}</button>
+                </span>
+                <span style={{display:'flex',gap:8,alignItems:'center'}}>
+                  {p.alive ? <span className="pill pill-alive">Alive</span> : <span className="pill pill-dead">Dead</span>}
+                  {p.alive
+                    ? <button className="btn-danger-sm" onClick={()=>toggleDead(p.id)}>Eliminate</button>
+                    : <button className="btn-success-sm" onClick={()=>toggleDead(p.id)}>Revive</button>}
+                </span>
+              </div>
+            ))}
           </div>
+
+          <button className="btn-primary" onClick={beginNight}>
+            ▶ Begin Night {room.round+1}
+          </button>
         </>
       )}
     </div>
@@ -1175,37 +1230,40 @@ function ModDay({room, upd, onVoice, onExit}) {
 function PlayerView({room, myId, upd, onExit}) {
   if (!room) return null;
   const me = room.players.find(p=>p.id===myId);
-  if (!me) return (
-    <div className="wrap card center"><p className="muted">Waiting for the room…</p></div>
-  );
+  if (!me) return <div className="wrap card center"><p className="muted">Waiting for the room…</p></div>;
 
   if (room.phase === 'lobby') return (
     <div className="wrap">
-      <GameHeader onExit={onExit}/>
-      <div className="center"><div style={{fontSize:44}}>🕯️</div><h2 style={{marginTop:10}}>You're in!</h2></div>
-      <div className="card">
-        <p>Waiting for the moderator to assign roles and start the game…</p>
-        <p className="muted" style={{marginTop:8}}>{room.players.length}/10 players joined</p>
-        <ul className="plist">
-          {room.players.map(p => (
-            <li key={p.id}>
-              <span>{p.name}{p.id===myId?' (you)':''}</span>
-              {p.isMod && <span className="pill pill-mod">Mod</span>}
-            </li>
-          ))}
-        </ul>
+      <GameHeader onExit={onExit} label="Player"/>
+      <div style={{textAlign:'center',padding:'32px 0',borderBottom:'1px solid var(--line)'}}>
+        <p className="eyebrow" style={{marginBottom:8}}>You're In</p>
+        <h2 style={{fontSize:32}}>Waiting for the game to begin</h2>
+      </div>
+      <div className="card" style={{borderTop:'none'}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+          <p className="eyebrow">Players</p>
+          <span style={{fontSize:10,letterSpacing:2,color:'var(--muted)'}}>{room.players.length}/10</span>
+        </div>
+        {room.players.map((p,i) => (
+          <div key={p.id} className="player-row">
+            <span className="player-num">{String(i+1).padStart(2,'0')}</span>
+            <span className="player-name">{p.name}{p.id===myId?' (you)':''}</span>
+            {p.isMod && <span className="pill pill-mod">Mod</span>}
+          </div>
+        ))}
       </div>
     </div>
   );
 
   if (!me.alive) return (
     <div className="wrap">
-      <GameHeader onExit={onExit}/>
-      <div className="badge-phase">{room.phase==='night'?`🌙 Night ${room.round}`:`☀️ Day ${room.round}`}</div>
-      <div className="card center" style={{padding:'36px 22px'}}>
-        <div style={{fontSize:40}}>👻</div>
-        <h3 style={{marginTop:12}}>You have been eliminated</h3>
-        <p className="muted" style={{marginTop:6}}>You can watch, but you're no longer playing.</p>
+      <GameHeader onExit={onExit} label="Eliminated"/>
+      <div className="badge-phase">{room.phase==='night'?`🌙 Night ${room.round}`:`☀ Day ${room.round}`}</div>
+      <div className="card center" style={{padding:'48px 22px',borderTop:'none'}}>
+        <div style={{fontSize:36,marginBottom:16}}>👻</div>
+        <p className="eyebrow" style={{marginBottom:8}}>You Have Fallen</p>
+        <h3 style={{fontSize:22}}>Eliminated</h3>
+        <p className="muted" style={{marginTop:8}}>You can watch, but can no longer act.</p>
       </div>
     </div>
   );
@@ -1226,37 +1284,43 @@ function PlayerNight({room, me, myId, upd, onExit}) {
   }
 
   const alive = room.players.filter(p=>p.alive&&!p.isMod);
-
   let action = null;
 
   if (me.role==='mafia' && show==='mafia') {
     const myPick = room.nightActions.mafiaTarget;
     const targets = alive.filter(p=>p.role!=='mafia');
     action = (
-      <div className="card">
-        <h3>🔪 Choose your target</h3>
-        <p className="muted" style={{marginTop:6,marginBottom:4}}>Tap a name. All Mafia members see the same selection.</p>
-        {targets.map(p => (
-          <button key={p.id} className={`target-btn${myPick===p.id?' selected':''}`} onClick={()=>pick('mafiaTarget',p.id)}>
-            {p.name}
-            {myPick===p.id && <span style={{float:'right',color:'var(--red2)'}}>✓ selected</span>}
-          </button>
-        ))}
-        {!myPick && <p className="muted" style={{marginTop:10,fontSize:12}}>No target selected yet.</p>}
+      <div className="card" style={{borderTop:'none',padding:0,marginBottom:14}}>
+        <div className="action-panel-head">
+          <h3>Choose Your Target</h3>
+          <span className="ap-status">Mafia Night</span>
+        </div>
+        <div className="target-list" style={{border:'none',margin:0}}>
+          {targets.map(p => (
+            <button key={p.id} className={`target-btn${myPick===p.id?' selected':''}`} onClick={()=>pick('mafiaTarget',p.id)}>
+              {p.name}
+              {myPick===p.id && <span style={{float:'right',fontSize:10,letterSpacing:2,color:'var(--red2)'}}>SELECTED</span>}
+            </button>
+          ))}
+        </div>
       </div>
     );
   } else if (me.role==='doctor' && show==='doctor') {
     const myPick = room.nightActions.doctorSave;
     action = (
-      <div className="card">
-        <h3>💉 Who do you protect?</h3>
-        <p className="muted" style={{marginTop:6,marginBottom:4}}>You may protect yourself.</p>
-        {alive.map(p => (
-          <button key={p.id} className={`target-btn${myPick===p.id?' selected':''}`} onClick={()=>pick('doctorSave',p.id)}>
-            {p.name}{p.id===myId?' (you)':''}
-            {myPick===p.id && <span style={{float:'right',color:'var(--green)'}}>✓ protected</span>}
-          </button>
-        ))}
+      <div className="card" style={{borderTop:'none',padding:0,marginBottom:14}}>
+        <div className="action-panel-head">
+          <h3>Choose Who to Protect</h3>
+          <span className="ap-status">Doctor Night</span>
+        </div>
+        <div className="target-list" style={{border:'none',margin:0}}>
+          {alive.map(p => (
+            <button key={p.id} className={`target-btn${myPick===p.id?' selected':''}`} onClick={()=>pick('doctorSave',p.id)}>
+              {p.name}{p.id===myId?' (you)':''}
+              {myPick===p.id && <span style={{float:'right',fontSize:10,letterSpacing:2,color:'var(--green)'}}>PROTECTED</span>}
+            </button>
+          ))}
+        </div>
       </div>
     );
   } else if (me.role==='detective' && show==='detective') {
@@ -1264,35 +1328,47 @@ function PlayerNight({room, me, myId, upd, onExit}) {
     const pickedName = myPick ? room.players.find(p=>p.id===myPick)?.name : null;
     const revealed = room.detectiveResult && pickedName && room.detectiveResult.name === pickedName;
     action = (
-      <div className="card">
-        <h3>🔍 Investigate a player</h3>
-        <p className="muted" style={{marginTop:6,marginBottom:4}}>Select someone — the moderator will reveal their identity.</p>
-        {alive.filter(p=>p.id!==myId).map(p => (
-          <button key={p.id} className={`target-btn${myPick===p.id?' selected':''}`} onClick={()=>pick('detectiveCheck',p.id)}>
-            {p.name}
-            {myPick===p.id && <span style={{float:'right',color:'var(--blue)'}}>✓ investigating</span>}
-          </button>
-        ))}
-        {revealed && (
-          <div style={{marginTop:12,padding:'10px 14px',background:'rgba(74,122,191,0.1)',borderRadius:8,border:'1px solid rgba(74,122,191,0.3)'}}>
-            <p style={{fontSize:14}}>
-              <b style={{color:'var(--text)'}}>{room.detectiveResult.name}</b> is{' '}
-              <b style={{color:room.detectiveResult.isMafia?'var(--red2)':'var(--green)'}}>
-                {room.detectiveResult.isMafia ? 'Mafia 🔪' : 'not Mafia ✓'}
-              </b>
-            </p>
+      <div style={{marginBottom:14}}>
+        <div className="card" style={{borderTop:'none',padding:0}}>
+          <div className="action-panel-head">
+            <h3>Investigate a Player</h3>
+            <span className="ap-status">Detective Night</span>
           </div>
-        )}
-        {myPick && !revealed && <p className="muted" style={{marginTop:10,fontSize:12}}>Waiting for moderator to reveal…</p>}
+          <div className="target-list" style={{border:'none',margin:0}}>
+            {alive.filter(p=>p.id!==myId).map(p => (
+              <button key={p.id} className={`target-btn${myPick===p.id?' selected':''}`} onClick={()=>pick('detectiveCheck',p.id)}>
+                {p.name}
+                {myPick===p.id && <span style={{float:'right',fontSize:10,letterSpacing:2,color:'var(--blue)'}}>SELECTED</span>}
+              </button>
+            ))}
+          </div>
+          {revealed && (
+            <div style={{padding:'14px 18px',borderTop:'1px solid var(--line)',background:'var(--panel2)'}}>
+              <p style={{fontSize:10,letterSpacing:3,color:'var(--muted)',marginBottom:8,textTransform:'uppercase'}}>Investigation Result</p>
+              <p style={{fontSize:16,fontFamily:'Playfair Display,serif'}}>
+                <b>{room.detectiveResult.name}</b> is{' '}
+                <b style={{color:room.detectiveResult.isMafia?'var(--red2)':'var(--green)'}}>
+                  {room.detectiveResult.isMafia?'Mafia':'Not Mafia'}
+                </b>
+              </p>
+            </div>
+          )}
+          {myPick && !revealed && (
+            <div style={{padding:'13px 18px',borderTop:'1px solid var(--line)',background:'var(--panel2)'}}>
+              <p style={{fontSize:10,letterSpacing:3,color:'var(--muted)',textTransform:'uppercase'}}>Awaiting Moderator Reveal…</p>
+            </div>
+          )}
+        </div>
       </div>
     );
   } else {
     action = (
-      <div className="card center">
+      <div className="card center" style={{borderTop:'none'}}>
         <div className="sleep-screen">
-          <div style={{fontSize:56}}>🌙</div>
-          <h3>The city sleeps</h3>
-          <p className="muted">Keep your eyes closed.<br/>Listen for instructions.</p>
+          <div style={{fontSize:44}}>🌙</div>
+          <p className="eyebrow">The City Sleeps</p>
+          <h3 style={{fontSize:22,marginTop:4}}>Eyes Down</h3>
+          <p className="muted">Listen for instructions from the narrator.</p>
         </div>
       </div>
     );
@@ -1300,7 +1376,7 @@ function PlayerNight({room, me, myId, upd, onExit}) {
 
   return (
     <div className="wrap">
-      <GameHeader onExit={onExit}/>
+      <GameHeader onExit={onExit} label="Player"/>
       <div className="badge-phase">🌙 Night {room.round}</div>
       <RoleCard role={me.role} compact/>
       {action}
@@ -1321,108 +1397,110 @@ function PlayerDay({room, me, myId, upd, onExit}) {
   function vote(targetId) {
     upd(r => {
       if (!r.votes) r.votes = {};
-      if (r.votes[myId] === targetId) {
-        delete r.votes[myId]; // deselect
-      } else {
-        r.votes[myId] = targetId;
-      }
+      if (r.votes[myId] === targetId) delete r.votes[myId];
+      else r.votes[myId] = targetId;
       return r;
     });
   }
 
   return (
     <div className="wrap">
-      <GameHeader onExit={onExit}/>
-      <div className="badge-phase">☀️ Day {room.round}</div>
+      <GameHeader onExit={onExit} label="Player"/>
+      <div className="badge-phase">☀ Day {room.round}</div>
 
-      <div className="card center">
+      {/* Night result */}
+      <div className="card" style={{borderTop:'none',marginBottom:0}}>
+        <p className="eyebrow" style={{marginBottom:8}}>Night Report</p>
         {room.lastDeath
-          ? <p style={{fontSize:15}}>☠️ <b style={{color:'var(--red2)'}}>{room.lastDeath}</b> was found dead this morning.</p>
+          ? <p style={{fontSize:15}}>☠ <b style={{color:'var(--red2)'}}>{room.lastDeath}</b> was found dead this morning.</p>
           : <p style={{fontSize:15}}>🌅 No one was killed last night.</p>}
       </div>
 
-      <RoleCard role={me.role} compact/>
-
+      {/* Detective result */}
       {me.role==='detective' && room.detectiveResult && (
-        <div className="card">
-          <h3>🔍 Your investigation result</h3>
-          <p style={{marginTop:8,fontSize:15}}>
+        <div className="card" style={{borderTop:'none',marginBottom:0}}>
+          <p className="eyebrow" style={{marginBottom:8}}>Investigation Result</p>
+          <p style={{fontSize:15}}>
             <b style={{color:'var(--text)'}}>{room.detectiveResult.name}</b> is{' '}
             <b style={{color:room.detectiveResult.isMafia?'var(--red2)':'var(--green)'}}>
-              {room.detectiveResult.isMafia?'Mafia 🔪':'not Mafia ✓'}
-            </b>.
+              {room.detectiveResult.isMafia?'Mafia 🔪':'Not Mafia ✓'}
+            </b>
           </p>
         </div>
       )}
 
+      <RoleCard role={me.role} compact/>
+
       {room.dayTimer && <TimerDisplay timer={room.dayTimer}/>}
 
       {/* Voting */}
-      <div className="card">
-        <h3>Vote to eliminate</h3>
-        <p className="muted" style={{marginTop:4,marginBottom:10}}>
-          {myVote ? `You voted for ${nameOf(room.players, myVote)}. Tap again to change.` : 'Tap a player to cast your vote.'}
-          <span style={{float:'right'}}>{Object.keys(votes).length}/{totalVoters} voted</span>
-        </p>
-        {alivePlayers.map(p => {
-          const vc = voteCounts[p.id] || 0;
-          const isLeader = vc === maxVotes && maxVotes > 0;
-          const pct = totalVoters ? (vc / totalVoters) * 100 : 0;
-          return (
-            <div key={p.id}>
-              <button
-                className={`target-btn${myVote===p.id?' vote-selected':''}`}
-                onClick={()=>vote(p.id)}>
-                {p.name}
-                <span className="vote-count">
-                  {vc > 0 ? `${vc} vote${vc!==1?'s':''}` : ''}
-                  {myVote===p.id ? ' ✓' : ''}
-                  {isLeader && vc > 0 ? ' 🎯' : ''}
-                </span>
-              </button>
-              {vc > 0 && <div className="vote-bar" style={{width:`${pct}%`,marginTop:-4,marginBottom:6}}/>}
-            </div>
-          );
-        })}
-        {alivePlayers.length === 0 && <p className="muted">No players to vote for.</p>}
+      <div className="card" style={{padding:0,marginBottom:14}}>
+        <div style={{padding:'14px 18px',borderBottom:'1px solid var(--line)'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <p className="eyebrow">Vote to Eliminate</p>
+            <span style={{fontSize:10,letterSpacing:2,color:'var(--muted)'}}>{Object.keys(votes).length}/{totalVoters}</span>
+          </div>
+          {myVote && <p className="muted" style={{marginTop:4,fontSize:12}}>Voted for {nameOf(room.players,myVote)}. Tap again to change.</p>}
+        </div>
+        <div className="target-list" style={{border:'none',margin:0}}>
+          {alivePlayers.map(p => {
+            const vc = voteCounts[p.id] || 0;
+            const isLeader = vc === maxVotes && maxVotes > 0;
+            const pct = totalVoters ? (vc/totalVoters)*100 : 0;
+            return (
+              <div key={p.id}>
+                <button className={`target-btn${myVote===p.id?' vote-selected':''}`} onClick={()=>vote(p.id)}>
+                  <span className={isLeader?'vote-leading':''}>{p.name}</span>
+                  <span className="vote-count" style={{float:'right',fontSize:10,letterSpacing:2,color:isLeader?'var(--red2)':'var(--muted)'}}>
+                    {vc>0?`${vc} vote${vc!==1?'s':''}`:''}{myVote===p.id?' ✓':''}
+                  </span>
+                </button>
+                {vc > 0 && <div className="vote-bar" style={{width:`${pct}%`,margin:'-1px 18px 0'}}/>}
+              </div>
+            );
+          })}
+          {alivePlayers.length===0 && <p className="muted" style={{padding:'14px 18px'}}>No players to vote for.</p>}
+        </div>
       </div>
 
-      <div className="card">
-        <h3>Players</h3>
-        <ul className="plist">
-          {room.players.filter(p=>!p.isMod).map(p => (
-            <li key={p.id}>
-              <span>{p.name}{p.id===myId?' (you)':''}</span>
-              {p.alive ? <span className="pill pill-alive">alive</span> : <span className="pill pill-dead">dead</span>}
-            </li>
-          ))}
-        </ul>
+      {/* Player list */}
+      <div className="card" style={{padding:0}}>
+        <div style={{padding:'12px 18px',borderBottom:'1px solid var(--line)'}}>
+          <p className="eyebrow">All Players</p>
+        </div>
+        {room.players.filter(p=>!p.isMod).map((p,i,arr) => (
+          <div key={p.id} className="p-row" style={{padding:'11px 18px',borderBottom:i<arr.length-1?'1px solid var(--line)':'none'}}>
+            <span>{p.name}{p.id===myId?' (you)':''}</span>
+            {p.alive ? <span className="pill pill-alive">Alive</span> : <span className="pill pill-dead">Dead</span>}
+          </div>
+        ))}
       </div>
 
-      <div className="card center">
-        <p className="muted" style={{fontSize:12}}>Discuss and vote. The moderator will confirm the elimination and start the next night.</p>
-      </div>
+      <p className="muted center" style={{marginTop:16,fontSize:11,letterSpacing:2,textTransform:'uppercase'}}>
+        Discuss & vote — the moderator confirms eliminations.
+      </p>
     </div>
   );
 }
 
-/* ── Role card with reveal toggle ── */
+/* ── Role card ── */
 function RoleCard({role, compact}) {
   const [visible, setVisible] = useState(false);
   const info = RI[role];
   if (!info) return null;
 
   return (
-    <div style={{marginBottom:compact?12:14}}>
+    <div style={{marginBottom:14}}>
       <div className="role-wrapper">
-        <div
-          className={`role-card ${info.team==='mafia'?'role-mafia':'role-town'}`}
-          style={{...(compact?{padding:'18px 20px'}:{}), opacity: visible ? 1 : 0.08, marginBottom: 0}}
-        >
-          <div style={{fontSize:compact?28:42}}>{info.emoji}</div>
-          <div className="muted" style={{fontSize:10,letterSpacing:2,textTransform:'uppercase',marginTop:6}}>Your role</div>
-          <div style={{fontSize:compact?20:28,fontFamily:'Georgia,serif',margin:'6px 0',color:info.color}}>{info.label}</div>
-          {!compact && <p style={{opacity:.85,fontSize:14,lineHeight:1.6}}>{info.desc}</p>}
+        <div className={`role-card ${info.team==='mafia'?'role-mafia':'role-town'}`}
+          style={{padding:compact?'18px 20px':'32px 22px', opacity:visible?1:0.07}}>
+          <p className="eyebrow" style={{marginBottom:8}}>Your Role</p>
+          <div style={{fontSize:compact?24:40}}>{info.emoji}</div>
+          <div style={{
+            fontSize:compact?16:26, fontFamily:'Playfair Display,Georgia,serif',
+            margin:'8px 0 4px', color:info.color, letterSpacing:3, textTransform:'uppercase'
+          }}>{info.label}</div>
+          {!compact && <p style={{opacity:.8,fontSize:13,lineHeight:1.7,marginTop:8,fontStyle:'italic'}}>{info.desc}</p>}
         </div>
         {!visible && (
           <div className="role-reveal-overlay" onClick={()=>setVisible(true)}>
@@ -1432,7 +1510,7 @@ function RoleCard({role, compact}) {
         )}
       </div>
       <button className="btn-reveal" onClick={()=>setVisible(v=>!v)}>
-        {visible ? '🙈 Hide role' : '👁 Reveal role'}
+        {visible ? 'Hide Role' : 'Reveal Role'}
       </button>
     </div>
   );
