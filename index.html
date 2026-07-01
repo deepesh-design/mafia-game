@@ -423,6 +423,7 @@ function setQP(k, v) { const u = new URL(location); u.searchParams.set(k, v); hi
 /* ── Voice ── */
 let _voiceName = sessionStorage.getItem('maf:voice') || '';
 function setVoiceName(n) { _voiceName = n; sessionStorage.setItem('maf:voice', n); }
+function syncVoiceFromRoom(r) { if (r?.voiceName && r.voiceName !== _voiceName) setVoiceName(r.voiceName); }
 function speak(text) {
   try {
     speechSynthesis.cancel();
@@ -471,13 +472,23 @@ const nameOf = (players, id) => players.find(p => p.id === id)?.name ?? null;
 function autoAssignRoles(players) {
   const nonMod = players.filter(p => !p.isMod);
   const n = nonMod.length;
+  if (n === 0) return {};
   const roles = [];
-  const mafiaCount = Math.max(1, Math.floor(n / 4));
-  const hasDoctor = n >= 5;
-  const hasDetective = n >= 7;
-  for (let i = 0; i < mafiaCount; i++) roles.push('mafia');
-  if (hasDoctor) roles.push('doctor');
-  if (hasDetective) roles.push('detective');
+  if (n >= 3) {
+    // Always 1 doctor + 1 detective
+    roles.push('doctor', 'detective');
+    const remaining = n - 2;
+    // 1 mafia for up to 3 villagers, 2 for 4-5, 3 for 6+
+    let mafiaCount;
+    if (remaining <= 4) mafiaCount = 1;
+    else if (remaining <= 7) mafiaCount = 2;
+    else mafiaCount = 3;
+    for (let i = 0; i < mafiaCount; i++) roles.push('mafia');
+  } else if (n === 2) {
+    roles.push('mafia', 'villager');
+  } else {
+    roles.push('mafia');
+  }
   while (roles.length < n) roles.push('villager');
   // Fisher-Yates shuffle
   for (let i = roles.length - 1; i > 0; i--) {
@@ -496,7 +507,7 @@ function timerRemaining(timer) {
 /* ══════════════════════════════════════════════
    VOICE SETTINGS MODAL
 ══════════════════════════════════════════════ */
-function VoiceModal({onClose}) {
+function VoiceModal({onClose, onSelect}) {
   const [voices, setVoices] = useState([]);
   const [selected, setSelected] = useState(_voiceName);
 
@@ -514,6 +525,7 @@ function VoiceModal({onClose}) {
   function pick(name) {
     setSelected(name);
     setVoiceName(name);
+    onSelect && onSelect(name);
     speak('Hello, testing voice for Mafia game.');
   }
 
@@ -546,7 +558,7 @@ function GameHeader({onVoice, onExit}) {
   return (
     <div className="game-header">
       <button className="btn-exit" onClick={onExit}>← Exit</button>
-      <button className="btn-voice" onClick={onVoice}>🔊 Voice</button>
+      {onVoice && <button className="btn-voice" onClick={onVoice}>🔊 Voice</button>}
     </div>
   );
 }
@@ -633,6 +645,7 @@ function App() {
     const iv = setInterval(() => {
       const r = getRoom(codeRef.current);
       if (!r) return;
+      syncVoiceFromRoom(r);
       if (r.speakTick !== prevTick.current) {
         prevTick.current = r.speakTick;
         if (r.speakText) speak(r.speakText);
@@ -777,11 +790,12 @@ function App() {
 
   return (
     <>
-      {showVoice && <VoiceModal onClose={()=>setShowVoice(false)}/>}
+      {showVoice && <VoiceModal onClose={()=>setShowVoice(false)} onSelect={name=>{
+        upd(r => { r.voiceName = name; return r; });
+      }}/>}
       {screen === 'mod' && <ModView room={room} myId={myId} upd={upd} joinUrl={location.href}
         onVoice={()=>setShowVoice(true)} onExit={exitGame}/>}
-      {screen === 'player' && <PlayerView room={room} myId={myId} upd={upd}
-        onVoice={()=>setShowVoice(true)} onExit={exitGame}/>}
+      {screen === 'player' && <PlayerView room={room} myId={myId} upd={upd} onExit={exitGame}/>}
     </>
   );
 }
@@ -968,12 +982,34 @@ function ModNight({room, upd, onVoice, onExit}) {
           <p className="muted" style={{marginTop:6}}>Protecting: <b style={{color:'var(--text)'}}>{nameOf(room.players,room.nightActions.doctorSave)||'none yet'}</b></p>
         </div>
       )}
-      {step.show === 'detective' && (
-        <div className="card">
-          <h3>🔍 Detective investigating…</h3>
-          <p className="muted" style={{marginTop:6}}>Checking: <b style={{color:'var(--text)'}}>{nameOf(room.players,room.nightActions.detectiveCheck)||'none yet'}</b></p>
-        </div>
-      )}
+      {step.show === 'detective' && (() => {
+        const dcId = room.nightActions.detectiveCheck;
+        const cp = dcId ? room.players.find(p => p.id === dcId) : null;
+        const alreadyRevealed = room.detectiveResult && cp && room.detectiveResult.name === cp.name;
+        return (
+          <div className="card">
+            <h3>🔍 Detective investigating…</h3>
+            <p className="muted" style={{marginTop:6}}>Checking: <b style={{color:'var(--text)'}}>{cp?.name || 'none yet'}</b></p>
+            {cp && (
+              <>
+                <p style={{marginTop:8,fontSize:13}}>
+                  Identity: <b style={{color:cp.role==='mafia'?'var(--red2)':'var(--green)'}}>
+                    {cp.role==='mafia' ? '🔪 Mafia' : '✓ Not Mafia'}
+                  </b>
+                </p>
+                {alreadyRevealed
+                  ? <p style={{marginTop:10,fontSize:12,color:'var(--green)'}}>✓ Result revealed to detective</p>
+                  : <button className="btn-gold-sm" style={{marginTop:10}} onClick={()=>upd(r=>{
+                      const p2 = r.players.find(x=>x.id===dcId);
+                      r.detectiveResult = p2 ? {name:p2.name, isMafia:p2.role==='mafia'} : null;
+                      return r;
+                    })}>Reveal to Detective</button>
+                }
+              </>
+            )}
+          </div>
+        );
+      })()}
 
       <button className="btn-primary" onClick={next}>
         {isLast ? '☀️ Wake the city' : 'Next →'}
@@ -1136,7 +1172,7 @@ function ModDay({room, upd, onVoice, onExit}) {
 /* ══════════════════════════════════════════════
    PLAYER VIEWS
 ══════════════════════════════════════════════ */
-function PlayerView({room, myId, upd, onVoice, onExit}) {
+function PlayerView({room, myId, upd, onExit}) {
   if (!room) return null;
   const me = room.players.find(p=>p.id===myId);
   if (!me) return (
@@ -1145,7 +1181,7 @@ function PlayerView({room, myId, upd, onVoice, onExit}) {
 
   if (room.phase === 'lobby') return (
     <div className="wrap">
-      <GameHeader onVoice={onVoice} onExit={onExit}/>
+      <GameHeader onExit={onExit}/>
       <div className="center"><div style={{fontSize:44}}>🕯️</div><h2 style={{marginTop:10}}>You're in!</h2></div>
       <div className="card">
         <p>Waiting for the moderator to assign roles and start the game…</p>
@@ -1164,7 +1200,7 @@ function PlayerView({room, myId, upd, onVoice, onExit}) {
 
   if (!me.alive) return (
     <div className="wrap">
-      <GameHeader onVoice={onVoice} onExit={onExit}/>
+      <GameHeader onExit={onExit}/>
       <div className="badge-phase">{room.phase==='night'?`🌙 Night ${room.round}`:`☀️ Day ${room.round}`}</div>
       <div className="card center" style={{padding:'36px 22px'}}>
         <div style={{fontSize:40}}>👻</div>
@@ -1174,12 +1210,12 @@ function PlayerView({room, myId, upd, onVoice, onExit}) {
     </div>
   );
 
-  if (room.phase === 'night') return <PlayerNight room={room} me={me} myId={myId} upd={upd} onVoice={onVoice} onExit={onExit}/>;
-  if (room.phase === 'day')   return <PlayerDay   room={room} me={me} myId={myId} upd={upd} onVoice={onVoice} onExit={onExit}/>;
+  if (room.phase === 'night') return <PlayerNight room={room} me={me} myId={myId} upd={upd} onExit={onExit}/>;
+  if (room.phase === 'day')   return <PlayerDay   room={room} me={me} myId={myId} upd={upd} onExit={onExit}/>;
   return null;
 }
 
-function PlayerNight({room, me, myId, upd, onVoice, onExit}) {
+function PlayerNight({room, me, myId, upd, onExit}) {
   const script  = room.nightScript || [];
   const stepIdx = room.nightStep || 0;
   const step    = script[stepIdx] || {};
@@ -1225,16 +1261,29 @@ function PlayerNight({room, me, myId, upd, onVoice, onExit}) {
     );
   } else if (me.role==='detective' && show==='detective') {
     const myPick = room.nightActions.detectiveCheck;
+    const pickedName = myPick ? room.players.find(p=>p.id===myPick)?.name : null;
+    const revealed = room.detectiveResult && pickedName && room.detectiveResult.name === pickedName;
     action = (
       <div className="card">
         <h3>🔍 Investigate a player</h3>
-        <p className="muted" style={{marginTop:6,marginBottom:4}}>You'll receive the result at dawn.</p>
+        <p className="muted" style={{marginTop:6,marginBottom:4}}>Select someone — the moderator will reveal their identity.</p>
         {alive.filter(p=>p.id!==myId).map(p => (
           <button key={p.id} className={`target-btn${myPick===p.id?' selected':''}`} onClick={()=>pick('detectiveCheck',p.id)}>
             {p.name}
             {myPick===p.id && <span style={{float:'right',color:'var(--blue)'}}>✓ investigating</span>}
           </button>
         ))}
+        {revealed && (
+          <div style={{marginTop:12,padding:'10px 14px',background:'rgba(74,122,191,0.1)',borderRadius:8,border:'1px solid rgba(74,122,191,0.3)'}}>
+            <p style={{fontSize:14}}>
+              <b style={{color:'var(--text)'}}>{room.detectiveResult.name}</b> is{' '}
+              <b style={{color:room.detectiveResult.isMafia?'var(--red2)':'var(--green)'}}>
+                {room.detectiveResult.isMafia ? 'Mafia 🔪' : 'not Mafia ✓'}
+              </b>
+            </p>
+          </div>
+        )}
+        {myPick && !revealed && <p className="muted" style={{marginTop:10,fontSize:12}}>Waiting for moderator to reveal…</p>}
       </div>
     );
   } else {
@@ -1251,7 +1300,7 @@ function PlayerNight({room, me, myId, upd, onVoice, onExit}) {
 
   return (
     <div className="wrap">
-      <GameHeader onVoice={onVoice} onExit={onExit}/>
+      <GameHeader onExit={onExit}/>
       <div className="badge-phase">🌙 Night {room.round}</div>
       <RoleCard role={me.role} compact/>
       {action}
@@ -1259,7 +1308,7 @@ function PlayerNight({room, me, myId, upd, onVoice, onExit}) {
   );
 }
 
-function PlayerDay({room, me, myId, upd, onVoice, onExit}) {
+function PlayerDay({room, me, myId, upd, onExit}) {
   const alivePlayers = room.players.filter(p=>p.alive&&!p.isMod&&p.id!==myId);
   const votes = room.votes || {};
   const myVote = votes[myId] || null;
@@ -1283,7 +1332,7 @@ function PlayerDay({room, me, myId, upd, onVoice, onExit}) {
 
   return (
     <div className="wrap">
-      <GameHeader onVoice={onVoice} onExit={onExit}/>
+      <GameHeader onExit={onExit}/>
       <div className="badge-phase">☀️ Day {room.round}</div>
 
       <div className="card center">
