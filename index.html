@@ -1,0 +1,1395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mafia</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Lora:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    :root {
+      --bg: #080607;
+      --panel: #0e0c10;
+      --panel2: #151219;
+      --line: #2c2618;
+      --red: #7a1515;
+      --red2: #c0392b;
+      --gold: #c9a84c;
+      --gold2: #e8c875;
+      --green: #2e7d52;
+      --blue: #4a7abf;
+      --text: #f0e8d5;
+      --muted: #6e6248;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Lora', Georgia, 'Times New Roman', serif;
+      background: var(--bg);
+      background-image:
+        radial-gradient(ellipse at 10% 0%, rgba(120,85,10,.22) 0%, transparent 50%),
+        radial-gradient(ellipse at 90% 100%, rgba(90,12,12,.18) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 50%, rgba(30,20,5,.5) 0%, transparent 80%);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 28px 16px 80px;
+      /* subtle noise texture */
+      position: relative;
+    }
+    body::before {
+      content: '';
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+      opacity: .6;
+    }
+
+    h1, h2, h3, h4 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-weight: 700;
+      letter-spacing: .02em;
+    }
+    a { color: inherit; }
+
+    .wrap { max-width: 560px; margin: 0 auto; position: relative; z-index: 1; }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--panel);
+      border: 1px solid rgba(201,168,76,.18);
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+    .card::before {
+      content: '';
+      position: absolute; top: 0; left: 15%; right: 15%; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(201,168,76,.5), transparent);
+    }
+    .card-inner { background: var(--panel2); border-radius: 10px; padding: 14px; margin-top: 10px; border: 1px solid rgba(201,168,76,.08); }
+
+    .center { text-align: center; }
+    .muted { color: var(--muted); font-size: 13px; font-family: 'Lora', Georgia, serif; }
+    .err-box { border-color: var(--red2) !important; color: var(--red2); }
+    .warn { color: var(--gold); font-size: 13px; }
+
+    /* ── Inputs ── */
+    input, select {
+      width: 100%;
+      background: var(--panel2);
+      border: 1px solid rgba(201,168,76,.2);
+      color: var(--text);
+      padding: 12px 14px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: 'Lora', Georgia, serif;
+      outline: none;
+      margin-top: 10px;
+      appearance: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    input::placeholder { color: var(--muted); }
+    input:focus, select:focus {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 3px rgba(201,168,76,.12);
+    }
+    select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23c9a84c' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 36px;
+    }
+
+    /* ── Buttons ── */
+    button {
+      cursor: pointer; border: none; border-radius: 8px;
+      padding: 11px 18px; font-size: 14px; font-weight: 600;
+      font-family: 'Playfair Display', Georgia, serif;
+      transition: all .2s; letter-spacing: .04em;
+    }
+    button:disabled { opacity: .3; cursor: not-allowed; }
+    button:not(:disabled):hover { opacity: .88; }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #a8782a 0%, var(--gold) 50%, #b8902e 100%);
+      color: #0a0807;
+      width: 100%; margin-top: 12px;
+      font-size: 14px; padding: 14px;
+      text-transform: uppercase; letter-spacing: .1em;
+      box-shadow: 0 4px 24px rgba(201,168,76,.28), inset 0 1px 0 rgba(255,255,255,.12);
+      font-weight: 700;
+    }
+    .btn-primary:not(:disabled):hover {
+      box-shadow: 0 6px 32px rgba(201,168,76,.4);
+      opacity: 1; transform: translateY(-1px);
+    }
+    .btn-secondary {
+      background: var(--panel2); color: var(--text);
+      border: 1px solid rgba(201,168,76,.25);
+      width: 100%; margin-top: 10px;
+    }
+    .btn-secondary:hover { border-color: var(--gold); }
+    .btn-sm {
+      background: var(--panel2); color: var(--text);
+      border: 1px solid rgba(201,168,76,.2);
+      padding: 6px 14px; font-size: 12px; border-radius: 7px;
+    }
+    .btn-sm:hover { border-color: var(--gold); color: var(--gold); }
+    .btn-danger-sm {
+      background: none; color: var(--red2);
+      border: 1px solid rgba(192,57,43,.5);
+      padding: 4px 10px; font-size: 12px; border-radius: 6px; cursor: pointer;
+    }
+    .btn-danger-sm:hover { border-color: var(--red2); background: rgba(192,57,43,.1); }
+    .btn-success-sm {
+      background: none; color: var(--green);
+      border: 1px solid rgba(46,125,82,.5);
+      padding: 4px 10px; font-size: 12px; border-radius: 6px; cursor: pointer;
+    }
+    .btn-gold-sm {
+      background: rgba(201,168,76,.1); color: var(--gold);
+      border: 1px solid rgba(201,168,76,.4);
+      padding: 6px 16px; font-size: 12px; border-radius: 7px;
+      cursor: pointer; font-weight: 700; letter-spacing: .06em;
+    }
+    .btn-gold-sm:hover { background: rgba(201,168,76,.2); border-color: var(--gold); }
+    .btn-exit {
+      background: none; color: rgba(192,57,43,.8);
+      border: 1px solid rgba(192,57,43,.35);
+      padding: 6px 14px; font-size: 12px; border-radius: 7px;
+      cursor: pointer; font-weight: 600; letter-spacing: .04em;
+    }
+    .btn-exit:hover { border-color: var(--red2); color: var(--red2); }
+    .btn-voice {
+      background: var(--panel2); color: var(--muted);
+      border: 1px solid rgba(201,168,76,.15);
+      padding: 6px 14px; font-size: 12px; border-radius: 7px;
+      cursor: pointer; font-weight: 600;
+    }
+    .btn-voice:hover { border-color: var(--gold); color: var(--gold); }
+
+    /* ── Room code ── */
+    .code {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 46px; letter-spacing: 14px; text-align: center;
+      color: var(--gold); font-weight: 900; padding: 8px 0;
+      text-shadow: 0 0 40px rgba(201,168,76,.35), 0 2px 4px rgba(0,0,0,.8);
+    }
+    .small-caps {
+      color: var(--muted); font-size: 11px; letter-spacing: 3px;
+      text-transform: uppercase; text-align: center;
+      font-family: 'Lora', Georgia, serif;
+    }
+
+    /* ── Divider ornament ── */
+    .ornament {
+      text-align: center; color: var(--gold); opacity: .4;
+      font-size: 18px; margin: 6px 0; letter-spacing: 8px;
+    }
+
+    /* ── Pills ── */
+    .pill { display: inline-block; padding: 3px 11px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: .04em; font-family: 'Lora', serif; }
+    .pill-alive { background: rgba(46,125,82,.18); color: #4aad7a; border: 1px solid rgba(46,125,82,.3); }
+    .pill-dead  { background: rgba(122,21,21,.18); color: #c0392b; border: 1px solid rgba(122,21,21,.3); text-decoration: line-through; }
+    .pill-mod   { background: rgba(201,168,76,.12); color: var(--gold); border: 1px solid rgba(201,168,76,.3); }
+
+    /* ── Player list ── */
+    .plist { list-style: none; padding: 0; margin-top: 10px; }
+    .plist li {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 11px 4px; border-bottom: 1px solid rgba(201,168,76,.08); gap: 12px;
+    }
+    .plist li:last-child { border-bottom: none; }
+    .player-name { font-size: 15px; font-family: 'Lora', serif; }
+
+    /* ── Phase badge ── */
+    .badge-phase {
+      text-align: center; padding: 9px 16px; border-radius: 6px;
+      background: transparent;
+      border: 1px solid rgba(201,168,76,.25);
+      font-family: 'Playfair Display', serif;
+      font-size: 12px; letter-spacing: 4px; text-transform: uppercase;
+      color: var(--gold); margin-bottom: 18px;
+      text-shadow: 0 0 20px rgba(201,168,76,.3);
+    }
+
+    /* ── Role cards ── */
+    .role-card {
+      border-radius: 14px; padding: 36px 24px; text-align: center;
+      border: 1px solid rgba(201,168,76,.15);
+      position: relative; overflow: hidden;
+    }
+    .role-card::after {
+      content: '';
+      position: absolute; top: 0; left: 20%; right: 20%; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(201,168,76,.6), transparent);
+    }
+    .role-mafia {
+      background: linear-gradient(160deg, #1e0a0a 0%, #0c0406 100%);
+      border-color: rgba(122,21,21,.45);
+      box-shadow: 0 0 40px rgba(122,21,21,.15) inset, 0 8px 32px rgba(0,0,0,.6);
+    }
+    .role-town {
+      background: linear-gradient(160deg, #0a1420 0%, #060c18 100%);
+      border-color: rgba(74,122,191,.3);
+      box-shadow: 0 0 40px rgba(74,122,191,.08) inset, 0 8px 32px rgba(0,0,0,.6);
+    }
+
+    .role-wrapper { position: relative; margin-bottom: 8px; }
+    .role-reveal-overlay {
+      position: absolute; inset: 0; border-radius: 14px;
+      background: rgba(8,6,7,.93);
+      border: 1px solid rgba(201,168,76,.15);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 10px; cursor: pointer;
+      transition: background .2s;
+    }
+    .role-reveal-overlay:hover { background: rgba(8,6,7,.85); }
+    .role-reveal-overlay span { font-size: 34px; }
+    .role-reveal-overlay p { color: var(--muted); font-size: 13px; font-family: 'Lora', serif; letter-spacing: .04em; }
+    .btn-reveal {
+      width: 100%; background: var(--panel2); color: var(--muted);
+      border: 1px solid rgba(201,168,76,.15);
+      padding: 9px; font-size: 12px; border-radius: 8px;
+      cursor: pointer; margin-top: 6px; margin-bottom: 14px;
+      letter-spacing: .06em; text-transform: uppercase;
+      font-family: 'Lora', serif;
+    }
+    .btn-reveal:hover { border-color: rgba(201,168,76,.4); color: var(--gold); }
+
+    /* ── Target / vote buttons ── */
+    .target-btn {
+      display: block; width: 100%; text-align: left;
+      background: var(--panel2); color: var(--text);
+      border: 1px solid rgba(201,168,76,.12);
+      padding: 13px 16px; border-radius: 9px; margin-top: 8px;
+      font-size: 15px; font-weight: 500; font-family: 'Lora', serif;
+      transition: all .2s;
+    }
+    .target-btn:hover { border-color: rgba(192,57,43,.6); background: rgba(122,21,21,.12); }
+    .target-btn.selected {
+      border-color: var(--red2); background: rgba(122,21,21,.2); color: #fff;
+      box-shadow: 0 0 0 1px rgba(192,57,43,.3);
+    }
+    .target-btn.vote-selected {
+      border-color: var(--gold); background: rgba(201,168,76,.12);
+      box-shadow: 0 0 0 1px rgba(201,168,76,.25);
+    }
+
+    /* ── Night step box ── */
+    .step-box {
+      background: var(--panel2); border: 1px solid rgba(201,168,76,.15);
+      border-radius: 12px; padding: 20px; margin-bottom: 16px;
+      position: relative; overflow: hidden;
+    }
+    .step-box::before {
+      content: '';
+      position: absolute; top: 0; left: 10%; right: 10%; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(201,168,76,.4), transparent);
+    }
+    .step-number { font-size: 10px; color: var(--muted); letter-spacing: 3px; text-transform: uppercase; font-family: 'Lora', serif; }
+    .step-instruction {
+      font-size: 18px; font-family: 'Playfair Display', serif;
+      font-style: italic; margin-top: 10px; line-height: 1.6; color: var(--gold);
+      text-shadow: 0 0 20px rgba(201,168,76,.2);
+    }
+    .step-progress { display: flex; gap: 5px; margin-top: 16px; }
+    .step-dot { height: 3px; flex: 1; border-radius: 2px; background: rgba(201,168,76,.12); }
+    .step-dot.done { background: rgba(201,168,76,.55); }
+    .step-dot.active { background: var(--gold); box-shadow: 0 0 6px rgba(201,168,76,.6); }
+
+    /* ── Link box ── */
+    .link-box {
+      background: var(--panel2); border: 1px solid rgba(201,168,76,.12);
+      border-radius: 8px; padding: 10px 13px; font-family: monospace;
+      font-size: 12px; color: var(--muted); word-break: break-all; margin-top: 10px;
+    }
+
+    /* ── Player rows (lobby) ── */
+    .player-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 11px 4px; border-bottom: 1px solid rgba(201,168,76,.08); gap: 12px;
+    }
+    .player-row:last-child { border-bottom: none; }
+    .player-row .player-name { flex: 1; font-size: 15px; font-family: 'Lora', serif; }
+    .role-select { margin-top: 0; flex: 0 0 180px; }
+
+    /* ── Sleep screen ── */
+    .sleep-screen {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; padding: 48px 0; gap: 14px;
+    }
+
+    /* ── Game header ── */
+    .game-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 20px; gap: 8px;
+    }
+
+    /* ── Voice modal ── */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.82); z-index: 100;
+      display: flex; align-items: center; justify-content: center; padding: 20px;
+      backdrop-filter: blur(4px);
+    }
+    .modal-box {
+      background: var(--panel); border: 1px solid rgba(201,168,76,.25);
+      border-radius: 16px; padding: 24px; width: 100%; max-width: 420px;
+      max-height: 80vh; display: flex; flex-direction: column; gap: 14px;
+      box-shadow: 0 24px 80px rgba(0,0,0,.8);
+      position: relative; overflow: hidden;
+    }
+    .modal-box::before {
+      content: '';
+      position: absolute; top: 0; left: 20%; right: 20%; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(201,168,76,.6), transparent);
+    }
+    .modal-box h3 { margin-bottom: 0; }
+    .voice-list { overflow-y: auto; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+    .voice-option {
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--panel2); border: 1px solid rgba(201,168,76,.1);
+      color: var(--text); padding: 11px 14px; border-radius: 9px;
+      font-size: 13px; font-weight: 500; text-align: left; cursor: pointer;
+      font-family: 'Lora', serif; transition: all .15s;
+    }
+    .voice-option.active { border-color: var(--gold); background: rgba(201,168,76,.1); color: var(--gold); }
+    .voice-option:hover { border-color: rgba(201,168,76,.35); }
+
+    /* ── Timer ── */
+    .timer-card {
+      border-radius: 12px; padding: 18px 22px; text-align: center;
+      background: var(--panel); border: 1px solid rgba(201,168,76,.2);
+      margin-bottom: 16px; position: relative; overflow: hidden;
+    }
+    .timer-card::before {
+      content: '';
+      position: absolute; top: 0; left: 20%; right: 20%; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(201,168,76,.5), transparent);
+    }
+    .timer-card.urgent { border-color: rgba(192,57,43,.5); }
+    .timer-display {
+      font-size: 52px; font-family: 'Playfair Display', serif;
+      font-weight: 900; color: var(--gold); line-height: 1; margin: 8px 0;
+      text-shadow: 0 0 30px rgba(201,168,76,.3);
+    }
+    .timer-display.urgent { color: var(--red2); text-shadow: 0 0 30px rgba(192,57,43,.4); }
+    .timer-label {
+      font-size: 10px; color: var(--muted); letter-spacing: 3px;
+      text-transform: uppercase; font-family: 'Lora', serif;
+    }
+    .timer-bar { height: 3px; border-radius: 2px; background: rgba(201,168,76,.1); margin-top: 12px; overflow: hidden; }
+    .timer-bar-fill { height: 100%; background: linear-gradient(90deg, #a8782a, var(--gold)); transition: width .5s linear; border-radius: 2px; }
+    .timer-bar-fill.urgent { background: linear-gradient(90deg, #7a1515, var(--red2)); }
+    .timer-btns { display: flex; gap: 8px; margin-top: 12px; }
+    .timer-btns button { flex: 1; }
+
+    /* ── Votes ── */
+    .vote-bar { height: 2px; background: linear-gradient(90deg, #a8782a, var(--gold)); border-radius: 2px; margin-top: 4px; transition: width .3s; }
+    .vote-count { float: right; font-size: 12px; color: var(--muted); font-family: 'Lora', serif; }
+    .vote-leading { color: var(--red2); font-weight: 700; }
+
+    /* ── Home screen hero ── */
+    .hero-dagger { font-size: 56px; filter: drop-shadow(0 0 24px rgba(201,168,76,.35)); }
+    .hero-title {
+      font-family: 'Playfair Display', serif; font-size: 48px; font-weight: 900;
+      background: linear-gradient(160deg, var(--gold2) 0%, var(--gold) 50%, #a8782a 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; margin: 10px 0 6px;
+      letter-spacing: .04em; line-height: 1.1;
+    }
+    .hero-sub { color: var(--muted); font-size: 13px; font-style: italic; letter-spacing: .06em; }
+  </style>
+</head>
+<body>
+<div id="app"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+/* ── Persistence ── */
+const rKey = c => `mafia:r:${c}`;
+const getRoom = c => { try { const v = localStorage.getItem(rKey(c)); return v ? JSON.parse(v) : null; } catch { return null; } };
+const saveRoom = r => { try { localStorage.setItem(rKey(r.code), JSON.stringify(r)); } catch {} };
+
+/* ── URL ── */
+const qp = k => new URLSearchParams(location.search).get(k);
+function setQP(k, v) { const u = new URL(location); u.searchParams.set(k, v); history.replaceState({}, '', u); }
+
+/* ── Voice ── */
+let _voiceName = sessionStorage.getItem('maf:voice') || '';
+function setVoiceName(n) { _voiceName = n; sessionStorage.setItem('maf:voice', n); }
+function speak(text) {
+  try {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 0.88; u.pitch = 0.78; u.volume = 1;
+    const voices = speechSynthesis.getVoices();
+    let v = _voiceName ? voices.find(x => x.name === _voiceName) : null;
+    if (!v) v = voices.find(x => /daniel|david|alex|male/i.test(x.name)) || voices.find(x => x.lang === 'en-US');
+    if (v) u.voice = v;
+    speechSynthesis.speak(u);
+  } catch {}
+}
+
+/* ── Night script builder ── */
+function buildScript(round, hasDoc, hasDet) {
+  const s = [
+    { id: 'sleep',       speak: `Night ${round} falls on the city. Everyone, close your eyes and put your heads down.`, show: 'sleep' },
+    { id: 'mafia-wake',  speak: 'Mafia, open your eyes and look around. Silently agree on your target for tonight.',    show: 'mafia' },
+    { id: 'mafia-sleep', speak: 'Mafia, close your eyes. Thank you.',                                                    show: 'sleep' },
+  ];
+  if (hasDoc) {
+    s.push({ id: 'doc-wake',  speak: 'Doctor, open your eyes. Choose one person to save tonight. You may save yourself.', show: 'doctor' });
+    s.push({ id: 'doc-sleep', speak: 'Doctor, close your eyes.',                                                           show: 'sleep' });
+  }
+  if (hasDet) {
+    s.push({ id: 'det-wake',  speak: 'Detective, open your eyes. Point to someone you want to investigate.', show: 'detective' });
+    s.push({ id: 'det-sleep', speak: 'Detective, close your eyes.',                                          show: 'sleep' });
+  }
+  s.push({ id: 'wake', speak: "Everyone, open your eyes. The night is over. Let's see what happened.", show: 'resolve' });
+  return s;
+}
+
+/* ── Constants ── */
+const ROLES = ['mafia','doctor','detective','villager'];
+const RI = {
+  mafia:     { label:'Mafia',     emoji:'🔪', color:'#c0392b', team:'mafia', desc:'Each night, coordinate with your fellow Mafia to eliminate one citizen. Stay hidden during the day.' },
+  doctor:    { label:'Doctor',    emoji:'💉', color:'#4aad7a', team:'town',  desc:'Each night, choose one person to protect. They cannot be killed tonight. You may save yourself.' },
+  detective: { label:'Detective', emoji:'🔍', color:'#7098d4', team:'town',  desc:"Each night, investigate one player. You'll learn if they are Mafia or not." },
+  villager:  { label:'Villager',  emoji:'🧑', color:'#a09070', team:'town',  desc:'You have no special power. Use discussion and deduction during the day to identify and vote out the Mafia.' },
+};
+const uid = () => Math.random().toString(36).slice(2,9);
+const makeCode = () => Math.floor(1000 + Math.random()*9000).toString();
+const nameOf = (players, id) => players.find(p => p.id === id)?.name ?? null;
+
+/* ── Auto-assign roles ── */
+function autoAssignRoles(players) {
+  const nonMod = players.filter(p => !p.isMod);
+  const n = nonMod.length;
+  const roles = [];
+  const mafiaCount = Math.max(1, Math.floor(n / 4));
+  const hasDoctor = n >= 5;
+  const hasDetective = n >= 7;
+  for (let i = 0; i < mafiaCount; i++) roles.push('mafia');
+  if (hasDoctor) roles.push('doctor');
+  if (hasDetective) roles.push('detective');
+  while (roles.length < n) roles.push('villager');
+  // Fisher-Yates shuffle
+  for (let i = roles.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [roles[i], roles[j]] = [roles[j], roles[i]];
+  }
+  return Object.fromEntries(nonMod.map((p, i) => [p.id, roles[i]]));
+}
+
+/* ── Timer helpers ── */
+function timerRemaining(timer) {
+  if (!timer?.startAt) return null;
+  return Math.max(0, timer.duration - (Date.now() - timer.startAt) / 1000);
+}
+
+/* ══════════════════════════════════════════════
+   VOICE SETTINGS MODAL
+══════════════════════════════════════════════ */
+function VoiceModal({onClose}) {
+  const [voices, setVoices] = useState([]);
+  const [selected, setSelected] = useState(_voiceName);
+
+  useEffect(() => {
+    const load = () => {
+      const all = speechSynthesis.getVoices();
+      const en = all.filter(v => v.lang.startsWith('en'));
+      setVoices(en.length ? en : all.slice(0,20));
+    };
+    load();
+    speechSynthesis.addEventListener('voiceschanged', load);
+    return () => speechSynthesis.removeEventListener('voiceschanged', load);
+  }, []);
+
+  function pick(name) {
+    setSelected(name);
+    setVoiceName(name);
+    speak('Hello, testing voice for Mafia game.');
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-box" onClick={e=>e.stopPropagation()}>
+        <div>
+          <h3>🔊 Choose narrator voice</h3>
+          <p className="muted" style={{marginTop:4}}>Tap a voice to preview it.</p>
+        </div>
+        <div className="voice-list">
+          {voices.length === 0 && <p className="muted">Loading voices…</p>}
+          {voices.map(v => (
+            <button key={v.name} className={`voice-option${selected===v.name?' active':''}`} onClick={()=>pick(v.name)}>
+              <span>{v.name}</span>
+              <span style={{color:'var(--muted)',fontSize:11,fontWeight:400}}>{v.lang}{v.default?' · default':''}{selected===v.name?' ✓':''}</span>
+            </button>
+          ))}
+        </div>
+        <button className="btn-secondary" onClick={onClose}>Done</button>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════
+   GAME HEADER  (voice + exit buttons)
+══════════════════════════════════════════════ */
+function GameHeader({onVoice, onExit}) {
+  return (
+    <div className="game-header">
+      <button className="btn-exit" onClick={onExit}>← Exit</button>
+      <button className="btn-voice" onClick={onVoice}>🔊 Voice</button>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════
+   TIMER DISPLAY
+══════════════════════════════════════════════ */
+function TimerDisplay({timer}) {
+  const [remaining, setRemaining] = useState(() => timerRemaining(timer));
+
+  useEffect(() => {
+    if (!timer?.startAt) { setRemaining(null); return; }
+    const update = () => setRemaining(timerRemaining(timer));
+    update();
+    const iv = setInterval(update, 500);
+    return () => clearInterval(iv);
+  }, [timer?.startAt, timer?.duration]);
+
+  if (remaining === null) return null;
+
+  const total = timer.duration;
+  const pct = Math.max(0, remaining / total) * 100;
+  const mins = Math.floor(remaining / 60);
+  const secs = Math.floor(remaining % 60);
+  const urgent = remaining <= 30;
+  const done = remaining === 0;
+
+  return (
+    <div className={`timer-card${urgent?' urgent':''}`}>
+      <div className="timer-label">{done ? '⏰ Time\'s up — vote now!' : 'Discussion timer'}</div>
+      <div className={`timer-display${urgent?' urgent':''}`}>
+        {mins}:{String(secs).padStart(2,'0')}
+      </div>
+      <div className="timer-bar">
+        <div className={`timer-bar-fill${urgent?' urgent':''}`} style={{width:`${pct}%`}}/>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════
+   APP
+══════════════════════════════════════════════ */
+function App() {
+  const [myId] = useState(() => {
+    let id = sessionStorage.getItem('maf:id');
+    if (!id) { id = uid(); sessionStorage.setItem('maf:id', id); }
+    return id;
+  });
+  const [screen, setScreen] = useState('loading');
+  const [room, setRoom]     = useState(null);
+  const [myName, setMyName] = useState('');
+  const [nameInput, setNameInput] = useState('');
+  const [joinCode, setJoinCode]   = useState('');
+  const [error, setError]   = useState('');
+  const [showVoice, setShowVoice] = useState(false);
+  const modFlag   = useRef(false);
+  const codeRef   = useRef(null);
+  const prevTick  = useRef(0);
+
+  useEffect(() => {
+    const urlRoom = qp('room');
+    if (urlRoom) {
+      const r = getRoom(urlRoom);
+      if (!r) { setError('Room not found.'); setScreen('home'); return; }
+      codeRef.current = urlRoom;
+      const me = r.players.find(p => p.id === myId);
+      if (me) {
+        const isMod = !!sessionStorage.getItem('maf:mod:' + urlRoom);
+        modFlag.current = isMod || me.isMod;
+        setMyName(me.name);
+        setRoom(r);
+        setScreen(modFlag.current ? 'mod' : 'player');
+      } else {
+        setScreen('join-link');
+      }
+    } else {
+      setScreen('home');
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!codeRef.current || screen === 'home' || screen === 'join-link' || screen === 'loading') return;
+    const iv = setInterval(() => {
+      const r = getRoom(codeRef.current);
+      if (!r) return;
+      if (r.speakTick !== prevTick.current) {
+        prevTick.current = r.speakTick;
+        if (r.speakText) speak(r.speakText);
+      }
+      setRoom({...r});
+    }, 800);
+    return () => clearInterval(iv);
+  }, [screen]);
+
+  function upd(fn) {
+    const r = getRoom(codeRef.current);
+    if (!r) return;
+    const next = fn(r);
+    saveRoom(next);
+    setRoom({...next});
+  }
+
+  function goHome() {
+    const u = new URL(location);
+    u.searchParams.delete('room');
+    history.replaceState({}, '', u);
+    setRoom(null);
+    setScreen('home');
+    setError('');
+    setNameInput('');
+    setJoinCode('');
+    codeRef.current = null;
+    modFlag.current = false;
+  }
+
+  function exitGame() {
+    const code = codeRef.current;
+    if (!code) { goHome(); return; }
+    if (modFlag.current) {
+      if (!confirm('You are the moderator. Leaving will keep the room but remove your controls. Exit anyway?')) return;
+    }
+    upd(r => {
+      r.players = r.players.filter(p => p.id !== myId);
+      return r;
+    });
+    goHome();
+  }
+
+  function createRoom() {
+    if (!nameInput.trim()) { setError('Enter your name'); return; }
+    const code = makeCode();
+    const modId = myId;
+    const r = {
+      code, modId, phase:'lobby', round:0, nightStep:0, nightScript:[],
+      players:[{id:modId, name:nameInput.trim(), role:null, alive:true, isMod:true}],
+      nightActions:{mafiaTarget:null, doctorSave:null, detectiveCheck:null},
+      detectiveResult:null, lastDeath:null, speakTick:0, speakText:'',
+      votes:{}, dayTimer:null,
+    };
+    saveRoom(r);
+    sessionStorage.setItem('maf:mod:' + code, '1');
+    codeRef.current = code;
+    modFlag.current = true;
+    setQP('room', code);
+    setMyName(nameInput.trim());
+    setRoom(r);
+    setScreen('mod');
+    setError('');
+  }
+
+  function joinByCode() {
+    if (!nameInput.trim()) { setError('Enter your name'); return; }
+    if (!/^\d{4}$/.test(joinCode)) { setError('Enter a valid 4-digit code'); return; }
+    const r = getRoom(joinCode);
+    if (!r) { setError('Room not found'); return; }
+    if (r.phase !== 'lobby') { setError('Game already started'); return; }
+    if (r.players.length >= 10) { setError('Room is full (10 max)'); return; }
+    if (r.players.some(p => p.name.toLowerCase() === nameInput.trim().toLowerCase())) { setError('Name already taken'); return; }
+    r.players.push({id:myId, name:nameInput.trim(), role:null, alive:true, isMod:false});
+    saveRoom(r);
+    codeRef.current = joinCode;
+    setQP('room', joinCode);
+    setMyName(nameInput.trim());
+    setRoom(r);
+    setScreen('player');
+    setError('');
+  }
+
+  function joinByLink() {
+    if (!nameInput.trim()) { setError('Enter your name'); return; }
+    const code = codeRef.current;
+    const r = getRoom(code);
+    if (!r) { setError('Room not found'); return; }
+    if (r.phase !== 'lobby') { setError('Game already started'); return; }
+    if (r.players.length >= 10) { setError('Room is full'); return; }
+    if (r.players.some(p => p.name.toLowerCase() === nameInput.trim().toLowerCase())) { setError('Name already taken'); return; }
+    r.players.push({id:myId, name:nameInput.trim(), role:null, alive:true, isMod:false});
+    saveRoom(r);
+    setMyName(nameInput.trim());
+    setRoom(r);
+    setScreen('player');
+    setError('');
+  }
+
+  if (screen === 'loading') return <div style={{color:'var(--muted)',textAlign:'center',paddingTop:120}}>Loading…</div>;
+
+  if (screen === 'home') return (
+    <div className="wrap">
+      <div className="center" style={{marginBottom:32}}>
+        <div className="hero-dagger">🔪</div>
+        <h1 className="hero-title">Mafia</h1>
+        <p className="hero-sub">Up to 10 players · voice narration · moderator-controlled</p>
+      </div>
+      <div className="card">
+        <h3>Your name</h3>
+        <input value={nameInput} onChange={e=>setNameInput(e.target.value)} placeholder="e.g. Deepesh" maxLength={20} onKeyDown={e=>e.key==='Enter'&&createRoom()}/>
+      </div>
+      <div className="card">
+        <h3>Host a game</h3>
+        <p className="muted" style={{marginTop:4}}>You assign roles and control each phase.</p>
+        <button className="btn-primary" onClick={createRoom}>Create room</button>
+      </div>
+      <div className="card">
+        <h3>Join a game</h3>
+        <input value={joinCode} onChange={e=>setJoinCode(e.target.value.replace(/\D/g,'').slice(0,4))} placeholder="4-digit room code" onKeyDown={e=>e.key==='Enter'&&joinByCode()}/>
+        <button className="btn-secondary" onClick={joinByCode}>Join room</button>
+      </div>
+      {error && <div className="card err-box"><p>{error}</p></div>}
+    </div>
+  );
+
+  if (screen === 'join-link') return (
+    <div className="wrap">
+      <div className="center" style={{marginBottom:24}}>
+        <div style={{fontSize:48}}>🕯️</div>
+        <h2 style={{marginTop:8}}>You're invited</h2>
+        <p className="muted">Room <b style={{color:'var(--gold)'}}>{codeRef.current}</b></p>
+      </div>
+      <div className="card">
+        <h3>Enter your name to join</h3>
+        <input value={nameInput} onChange={e=>setNameInput(e.target.value)} placeholder="Your name" maxLength={20} onKeyDown={e=>e.key==='Enter'&&joinByLink()}/>
+        <button className="btn-primary" onClick={joinByLink}>Join game</button>
+      </div>
+      {error && <div className="card err-box"><p>{error}</p></div>}
+    </div>
+  );
+
+  return (
+    <>
+      {showVoice && <VoiceModal onClose={()=>setShowVoice(false)}/>}
+      {screen === 'mod' && <ModView room={room} myId={myId} upd={upd} joinUrl={location.href}
+        onVoice={()=>setShowVoice(true)} onExit={exitGame}/>}
+      {screen === 'player' && <PlayerView room={room} myId={myId} upd={upd}
+        onVoice={()=>setShowVoice(true)} onExit={exitGame}/>}
+    </>
+  );
+}
+
+/* ══════════════════════════════════════════════
+   MODERATOR VIEWS
+══════════════════════════════════════════════ */
+function ModView({room, myId, upd, joinUrl, onVoice, onExit}) {
+  if (!room) return null;
+  if (room.phase === 'lobby') return <ModLobby room={room} upd={upd} joinUrl={joinUrl} onVoice={onVoice} onExit={onExit}/>;
+  if (room.phase === 'night') return <ModNight room={room} upd={upd} onVoice={onVoice} onExit={onExit}/>;
+  if (room.phase === 'day')   return <ModDay   room={room} upd={upd} onVoice={onVoice} onExit={onExit}/>;
+  return null;
+}
+
+/* ── Moderator Lobby ── */
+function ModLobby({room, upd, joinUrl, onVoice, onExit}) {
+  const nonMod = room.players.filter(p => !p.isMod);
+  const [roles, setRoles] = useState(() => Object.fromEntries(nonMod.map(p => [p.id, p.role || ''])));
+
+  useEffect(() => {
+    setRoles(prev => {
+      const next = {...prev};
+      room.players.forEach(p => { if (!p.isMod && !(p.id in next)) next[p.id] = ''; });
+      return next;
+    });
+  }, [room.players.length]);
+
+  const counts = Object.values(roles).reduce((a,r) => { if(r) a[r]=(a[r]||0)+1; return a; }, {});
+  const allAssigned = nonMod.length > 0 && nonMod.every(p => roles[p.id]);
+  const mafiaOk = (counts.mafia||0) >= 1;
+
+  function randomize() {
+    if (nonMod.length === 0) return;
+    const assigned = autoAssignRoles(room.players);
+    setRoles(prev => ({...prev, ...assigned}));
+  }
+
+  function startGame() {
+    if (!allAssigned || !mafiaOk) return;
+    upd(r => {
+      r.players = r.players.map(p => p.isMod ? p : {...p, role: roles[p.id]});
+      const hasDoc = Object.values(roles).includes('doctor');
+      const hasDet = Object.values(roles).includes('detective');
+      r.nightScript = buildScript(1, hasDoc, hasDet);
+      r.phase = 'night'; r.round = 1; r.nightStep = 0;
+      r.nightActions = {mafiaTarget:null, doctorSave:null, detectiveCheck:null};
+      r.detectiveResult = null; r.lastDeath = null; r.votes = {}; r.dayTimer = null;
+      r.speakTick = 1; r.speakText = r.nightScript[0].speak;
+      return r;
+    });
+  }
+
+  function copyLink() { navigator.clipboard.writeText(joinUrl).catch(()=>{}); }
+
+  return (
+    <div className="wrap">
+      <GameHeader onVoice={onVoice} onExit={onExit}/>
+      <div className="center" style={{marginBottom:16}}>
+        <div className="small-caps">Room code</div>
+        <div className="code">{room.code}</div>
+      </div>
+
+      <div className="card">
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <h3>Invite players</h3>
+          <button className="btn-sm" onClick={copyLink}>📋 Copy link</button>
+        </div>
+        <div className="link-box">{joinUrl}</div>
+        <p className="muted" style={{marginTop:8}}>{room.players.length}/10 players joined — share the link or code above.</p>
+      </div>
+
+      <div className="card">
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+          <h3>Assign roles</h3>
+          <div style={{display:'flex',gap:8,alignItems:'center'}}>
+            <span className="muted" style={{fontSize:12}}>
+              {counts.mafia||0}🔪 {counts.doctor||0}💉 {counts.detective||0}🔍 {counts.villager||0}🧑
+            </span>
+            {nonMod.length > 0 && (
+              <button className="btn-gold-sm" onClick={randomize}>🎲 Auto</button>
+            )}
+          </div>
+        </div>
+
+        {nonMod.length === 0 && <p className="muted">No players yet — share the link above.</p>}
+
+        {room.players.map(p => (
+          <div key={p.id} className="player-row">
+            <span className="player-name">{p.name}</span>
+            {p.isMod
+              ? <span className="pill pill-mod">Moderator</span>
+              : <select className="role-select" value={roles[p.id]||''} onChange={e=>setRoles(r=>({...r,[p.id]:e.target.value}))}>
+                  <option value="">— pick role —</option>
+                  {ROLES.map(r => <option key={r} value={r}>{RI[r].emoji} {RI[r].label}</option>)}
+                </select>}
+          </div>
+        ))}
+
+        {!allAssigned && nonMod.length > 0 && (
+          <p className="muted" style={{marginTop:10}}>Assign a role to every player, or tap 🎲 Auto.</p>
+        )}
+        {allAssigned && !mafiaOk && <p className="warn" style={{marginTop:10}}>⚠️ At least one Mafia member is required.</p>}
+        <button className="btn-primary" disabled={!allAssigned||!mafiaOk} onClick={startGame} style={{marginTop:14}}>
+          Start game →
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ── Moderator Night ── */
+function ModNight({room, upd, onVoice, onExit}) {
+  const script  = room.nightScript || [];
+  const stepIdx = room.nightStep || 0;
+  const step    = script[stepIdx] || {};
+  const isLast  = stepIdx >= script.length - 1;
+  const spoken  = useRef(-1);
+
+  useEffect(() => {
+    if (stepIdx !== spoken.current) {
+      spoken.current = stepIdx;
+      if (step.speak) speak(step.speak);
+    }
+  }, [stepIdx]);
+
+  function next() {
+    upd(r => {
+      if (!isLast) {
+        r.nightStep = stepIdx + 1;
+        const ns = r.nightScript[r.nightStep];
+        r.speakTick = (r.speakTick||0)+1;
+        r.speakText = ns?.speak || '';
+      } else {
+        const {mafiaTarget:t, doctorSave:s, detectiveCheck:dc} = r.nightActions;
+        let death = null;
+        if (t && t !== s) {
+          r.players = r.players.map(p => p.id===t ? {...p,alive:false} : p);
+          death = r.players.find(p=>p.id===t)?.name ?? null;
+        }
+        if (dc) {
+          const cp = r.players.find(p=>p.id===dc);
+          r.detectiveResult = cp ? {name:cp.name, isMafia:cp.role==='mafia'} : null;
+        }
+        r.lastDeath = death;
+        r.phase = 'day';
+        r.votes = {};
+        r.dayTimer = null;
+        r.speakTick = (r.speakTick||0)+1;
+        r.speakText = death
+          ? `The sun rises. Last night, ${death} was found dead.`
+          : `The sun rises. Everyone survived the night.`;
+      }
+      return r;
+    });
+  }
+
+  const players = room.players.filter(p=>!p.isMod);
+
+  return (
+    <div className="wrap">
+      <GameHeader onVoice={onVoice} onExit={onExit}/>
+      <div className="badge-phase">🌙 Night {room.round}</div>
+
+      <div className="step-box">
+        <div className="step-number">Step {stepIdx+1} of {script.length}</div>
+        <div className="step-instruction">"{step.speak}"</div>
+        <div className="step-progress">
+          {script.map((_,i) => (
+            <div key={i} className={`step-dot ${i<stepIdx?'done':i===stepIdx?'active':''}`}/>
+          ))}
+        </div>
+      </div>
+
+      {step.show === 'mafia' && (
+        <div className="card">
+          <h3>🔪 Mafia choosing…</h3>
+          <p className="muted" style={{marginTop:6}}>Current target: <b style={{color:'var(--text)'}}>{nameOf(room.players,room.nightActions.mafiaTarget)||'none yet'}</b></p>
+        </div>
+      )}
+      {step.show === 'doctor' && (
+        <div className="card">
+          <h3>💉 Doctor choosing…</h3>
+          <p className="muted" style={{marginTop:6}}>Protecting: <b style={{color:'var(--text)'}}>{nameOf(room.players,room.nightActions.doctorSave)||'none yet'}</b></p>
+        </div>
+      )}
+      {step.show === 'detective' && (
+        <div className="card">
+          <h3>🔍 Detective investigating…</h3>
+          <p className="muted" style={{marginTop:6}}>Checking: <b style={{color:'var(--text)'}}>{nameOf(room.players,room.nightActions.detectiveCheck)||'none yet'}</b></p>
+        </div>
+      )}
+
+      <button className="btn-primary" onClick={next}>
+        {isLast ? '☀️ Wake the city' : 'Next →'}
+      </button>
+
+      <div className="card" style={{marginTop:14}}>
+        <h3>Players</h3>
+        <ul className="plist">
+          {players.map(p => (
+            <li key={p.id}>
+              <span>
+                {p.name}
+                <span style={{marginLeft:8,fontSize:12,color:RI[p.role]?.color}}>{RI[p.role]?.emoji} {RI[p.role]?.label}</span>
+              </span>
+              {p.alive ? <span className="pill pill-alive">alive</span> : <span className="pill pill-dead">dead</span>}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+/* ── Moderator Day ── */
+function ModDay({room, upd, onVoice, onExit}) {
+  const players = room.players.filter(p=>!p.isMod);
+  const alivePlayers = players.filter(p=>p.alive);
+  const aliveMafia = players.filter(p=>p.alive&&p.role==='mafia').length;
+  const aliveTown  = players.filter(p=>p.alive&&p.role!=='mafia').length;
+  const gameOver   = aliveMafia===0 || aliveMafia>=aliveTown;
+
+  /* vote tally */
+  const votes = room.votes || {};
+  const voteCounts = {};
+  Object.values(votes).forEach(tid => { voteCounts[tid] = (voteCounts[tid]||0)+1; });
+  const totalVoters = alivePlayers.length;
+  const maxVotes = Math.max(0, ...Object.values(voteCounts));
+  const leaders = alivePlayers.filter(p => (voteCounts[p.id]||0) === maxVotes && maxVotes > 0);
+
+  function toggleDead(pid) {
+    upd(r => { r.players = r.players.map(p=>p.id===pid?{...p,alive:!p.alive}:p); return r; });
+  }
+
+  function startTimer(duration) {
+    upd(r => { r.dayTimer = { duration, startAt: Date.now() }; return r; });
+  }
+
+  function clearTimer() {
+    upd(r => { r.dayTimer = null; return r; });
+  }
+
+  function beginNight() {
+    upd(r => {
+      const round = r.round+1;
+      const hasDoc = r.players.some(p=>p.role==='doctor'&&p.alive);
+      const hasDet = r.players.some(p=>p.role==='detective'&&p.alive);
+      r.round = round; r.phase = 'night'; r.nightStep = 0;
+      r.nightScript = buildScript(round, hasDoc, hasDet);
+      r.nightActions = {mafiaTarget:null,doctorSave:null,detectiveCheck:null};
+      r.detectiveResult = null;
+      r.votes = {}; r.dayTimer = null;
+      r.speakTick = (r.speakTick||0)+1;
+      r.speakText = r.nightScript[0].speak;
+      return r;
+    });
+  }
+
+  return (
+    <div className="wrap">
+      <GameHeader onVoice={onVoice} onExit={onExit}/>
+      <div className="badge-phase">☀️ Day {room.round}</div>
+
+      {gameOver ? (
+        <div className="card center" style={{padding:'40px 22px'}}>
+          <div style={{fontSize:48}}>{aliveMafia===0?'🏆':'🔪'}</div>
+          <h2 style={{marginTop:12,fontSize:28}}>{aliveMafia===0?'Town wins!':'Mafia wins!'}</h2>
+          <p className="muted" style={{marginTop:8}}>{aliveMafia===0?'All Mafia have been eliminated.':'Mafia equals or outnumbers the Town.'}</p>
+        </div>
+      ) : (
+        <>
+          <div className="card">
+            {room.lastDeath
+              ? <p style={{fontSize:16}}>☠️ <b style={{color:'var(--red2)'}}>{room.lastDeath}</b> was found dead this morning.</p>
+              : <p style={{fontSize:16}}>🌅 No one was killed last night.</p>}
+            {room.detectiveResult && (
+              <p className="muted" style={{marginTop:10,fontSize:13}}>
+                🔍 Detective result (private): <b style={{color:'var(--text)'}}>{room.detectiveResult.name}</b> is{' '}
+                <b style={{color:room.detectiveResult.isMafia?'var(--red2)':'var(--green)'}}>{room.detectiveResult.isMafia?'Mafia':'not Mafia'}</b>.
+              </p>
+            )}
+          </div>
+
+          {/* Timer controls */}
+          <div className="card">
+            <h3>Discussion timer</h3>
+            {room.dayTimer ? (
+              <>
+                <TimerDisplay timer={room.dayTimer}/>
+                <button className="btn-secondary" onClick={clearTimer} style={{marginTop:8}}>Stop timer</button>
+              </>
+            ) : (
+              <>
+                <p className="muted" style={{marginTop:6,marginBottom:10}}>Start a countdown for players to discuss.</p>
+                <div className="timer-btns">
+                  <button className="btn-gold-sm" onClick={()=>startTimer(300)}>5 min</button>
+                  <button className="btn-gold-sm" onClick={()=>startTimer(600)}>10 min</button>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Vote tally */}
+          <div className="card">
+            <h3>Live vote tally</h3>
+            <p className="muted" style={{marginTop:4,marginBottom:10}}>{Object.keys(votes).length}/{totalVoters} voted</p>
+            {alivePlayers.length === 0 && <p className="muted">No alive players.</p>}
+            {alivePlayers.map(p => {
+              const vc = voteCounts[p.id] || 0;
+              const isLeader = leaders.includes(p) && maxVotes > 0;
+              const pct = totalVoters ? (vc / totalVoters) * 100 : 0;
+              return (
+                <div key={p.id} style={{marginBottom:10}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                    <span className={isLeader?'vote-leading':''} style={{fontSize:14}}>{p.name}</span>
+                    <span style={{fontSize:12,color:isLeader?'var(--red2)':'var(--muted)'}}>{vc} vote{vc!==1?'s':''}{isLeader?' 🎯':''}</span>
+                  </div>
+                  {vc > 0 && <div className="vote-bar" style={{width:`${pct}%`}}/>}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="card">
+            <h3>Players &amp; roles</h3>
+            <p className="muted" style={{marginTop:4,marginBottom:10}}>Mark the voted-out player dead, then start the next night.</p>
+            <ul className="plist">
+              {players.map(p => (
+                <li key={p.id}>
+                  <span>
+                    {p.name}
+                    <span style={{marginLeft:8,fontSize:12,color:RI[p.role]?.color}}>{RI[p.role]?.emoji} {RI[p.role]?.label}</span>
+                  </span>
+                  <span style={{display:'flex',gap:8,alignItems:'center'}}>
+                    {p.alive ? <span className="pill pill-alive">alive</span> : <span className="pill pill-dead">dead</span>}
+                    {p.alive
+                      ? <button className="btn-danger-sm"  onClick={()=>toggleDead(p.id)}>mark dead</button>
+                      : <button className="btn-success-sm" onClick={()=>toggleDead(p.id)}>revive</button>}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <button className="btn-primary" onClick={beginNight} style={{marginTop:12}}>🌙 Begin Night {room.round+1}</button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════
+   PLAYER VIEWS
+══════════════════════════════════════════════ */
+function PlayerView({room, myId, upd, onVoice, onExit}) {
+  if (!room) return null;
+  const me = room.players.find(p=>p.id===myId);
+  if (!me) return (
+    <div className="wrap card center"><p className="muted">Waiting for the room…</p></div>
+  );
+
+  if (room.phase === 'lobby') return (
+    <div className="wrap">
+      <GameHeader onVoice={onVoice} onExit={onExit}/>
+      <div className="center"><div style={{fontSize:44}}>🕯️</div><h2 style={{marginTop:10}}>You're in!</h2></div>
+      <div className="card">
+        <p>Waiting for the moderator to assign roles and start the game…</p>
+        <p className="muted" style={{marginTop:8}}>{room.players.length}/10 players joined</p>
+        <ul className="plist">
+          {room.players.map(p => (
+            <li key={p.id}>
+              <span>{p.name}{p.id===myId?' (you)':''}</span>
+              {p.isMod && <span className="pill pill-mod">Mod</span>}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+
+  if (!me.alive) return (
+    <div className="wrap">
+      <GameHeader onVoice={onVoice} onExit={onExit}/>
+      <div className="badge-phase">{room.phase==='night'?`🌙 Night ${room.round}`:`☀️ Day ${room.round}`}</div>
+      <div className="card center" style={{padding:'36px 22px'}}>
+        <div style={{fontSize:40}}>👻</div>
+        <h3 style={{marginTop:12}}>You have been eliminated</h3>
+        <p className="muted" style={{marginTop:6}}>You can watch, but you're no longer playing.</p>
+      </div>
+    </div>
+  );
+
+  if (room.phase === 'night') return <PlayerNight room={room} me={me} myId={myId} upd={upd} onVoice={onVoice} onExit={onExit}/>;
+  if (room.phase === 'day')   return <PlayerDay   room={room} me={me} myId={myId} upd={upd} onVoice={onVoice} onExit={onExit}/>;
+  return null;
+}
+
+function PlayerNight({room, me, myId, upd, onVoice, onExit}) {
+  const script  = room.nightScript || [];
+  const stepIdx = room.nightStep || 0;
+  const step    = script[stepIdx] || {};
+  const show    = step.show;
+
+  function pick(field, targetId) {
+    upd(r => { r.nightActions = {...r.nightActions, [field]:targetId}; return r; });
+  }
+
+  const alive = room.players.filter(p=>p.alive&&!p.isMod);
+
+  let action = null;
+
+  if (me.role==='mafia' && show==='mafia') {
+    const myPick = room.nightActions.mafiaTarget;
+    const targets = alive.filter(p=>p.role!=='mafia');
+    action = (
+      <div className="card">
+        <h3>🔪 Choose your target</h3>
+        <p className="muted" style={{marginTop:6,marginBottom:4}}>Tap a name. All Mafia members see the same selection.</p>
+        {targets.map(p => (
+          <button key={p.id} className={`target-btn${myPick===p.id?' selected':''}`} onClick={()=>pick('mafiaTarget',p.id)}>
+            {p.name}
+            {myPick===p.id && <span style={{float:'right',color:'var(--red2)'}}>✓ selected</span>}
+          </button>
+        ))}
+        {!myPick && <p className="muted" style={{marginTop:10,fontSize:12}}>No target selected yet.</p>}
+      </div>
+    );
+  } else if (me.role==='doctor' && show==='doctor') {
+    const myPick = room.nightActions.doctorSave;
+    action = (
+      <div className="card">
+        <h3>💉 Who do you protect?</h3>
+        <p className="muted" style={{marginTop:6,marginBottom:4}}>You may protect yourself.</p>
+        {alive.map(p => (
+          <button key={p.id} className={`target-btn${myPick===p.id?' selected':''}`} onClick={()=>pick('doctorSave',p.id)}>
+            {p.name}{p.id===myId?' (you)':''}
+            {myPick===p.id && <span style={{float:'right',color:'var(--green)'}}>✓ protected</span>}
+          </button>
+        ))}
+      </div>
+    );
+  } else if (me.role==='detective' && show==='detective') {
+    const myPick = room.nightActions.detectiveCheck;
+    action = (
+      <div className="card">
+        <h3>🔍 Investigate a player</h3>
+        <p className="muted" style={{marginTop:6,marginBottom:4}}>You'll receive the result at dawn.</p>
+        {alive.filter(p=>p.id!==myId).map(p => (
+          <button key={p.id} className={`target-btn${myPick===p.id?' selected':''}`} onClick={()=>pick('detectiveCheck',p.id)}>
+            {p.name}
+            {myPick===p.id && <span style={{float:'right',color:'var(--blue)'}}>✓ investigating</span>}
+          </button>
+        ))}
+      </div>
+    );
+  } else {
+    action = (
+      <div className="card center">
+        <div className="sleep-screen">
+          <div style={{fontSize:56}}>🌙</div>
+          <h3>The city sleeps</h3>
+          <p className="muted">Keep your eyes closed.<br/>Listen for instructions.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="wrap">
+      <GameHeader onVoice={onVoice} onExit={onExit}/>
+      <div className="badge-phase">🌙 Night {room.round}</div>
+      <RoleCard role={me.role} compact/>
+      {action}
+    </div>
+  );
+}
+
+function PlayerDay({room, me, myId, upd, onVoice, onExit}) {
+  const alivePlayers = room.players.filter(p=>p.alive&&!p.isMod&&p.id!==myId);
+  const votes = room.votes || {};
+  const myVote = votes[myId] || null;
+
+  const voteCounts = {};
+  Object.values(votes).forEach(tid => { voteCounts[tid] = (voteCounts[tid]||0)+1; });
+  const totalVoters = room.players.filter(p=>p.alive&&!p.isMod).length;
+  const maxVotes = Math.max(0, ...Object.values(voteCounts));
+
+  function vote(targetId) {
+    upd(r => {
+      if (!r.votes) r.votes = {};
+      if (r.votes[myId] === targetId) {
+        delete r.votes[myId]; // deselect
+      } else {
+        r.votes[myId] = targetId;
+      }
+      return r;
+    });
+  }
+
+  return (
+    <div className="wrap">
+      <GameHeader onVoice={onVoice} onExit={onExit}/>
+      <div className="badge-phase">☀️ Day {room.round}</div>
+
+      <div className="card center">
+        {room.lastDeath
+          ? <p style={{fontSize:15}}>☠️ <b style={{color:'var(--red2)'}}>{room.lastDeath}</b> was found dead this morning.</p>
+          : <p style={{fontSize:15}}>🌅 No one was killed last night.</p>}
+      </div>
+
+      <RoleCard role={me.role} compact/>
+
+      {me.role==='detective' && room.detectiveResult && (
+        <div className="card">
+          <h3>🔍 Your investigation result</h3>
+          <p style={{marginTop:8,fontSize:15}}>
+            <b style={{color:'var(--text)'}}>{room.detectiveResult.name}</b> is{' '}
+            <b style={{color:room.detectiveResult.isMafia?'var(--red2)':'var(--green)'}}>
+              {room.detectiveResult.isMafia?'Mafia 🔪':'not Mafia ✓'}
+            </b>.
+          </p>
+        </div>
+      )}
+
+      {room.dayTimer && <TimerDisplay timer={room.dayTimer}/>}
+
+      {/* Voting */}
+      <div className="card">
+        <h3>Vote to eliminate</h3>
+        <p className="muted" style={{marginTop:4,marginBottom:10}}>
+          {myVote ? `You voted for ${nameOf(room.players, myVote)}. Tap again to change.` : 'Tap a player to cast your vote.'}
+          <span style={{float:'right'}}>{Object.keys(votes).length}/{totalVoters} voted</span>
+        </p>
+        {alivePlayers.map(p => {
+          const vc = voteCounts[p.id] || 0;
+          const isLeader = vc === maxVotes && maxVotes > 0;
+          const pct = totalVoters ? (vc / totalVoters) * 100 : 0;
+          return (
+            <div key={p.id}>
+              <button
+                className={`target-btn${myVote===p.id?' vote-selected':''}`}
+                onClick={()=>vote(p.id)}>
+                {p.name}
+                <span className="vote-count">
+                  {vc > 0 ? `${vc} vote${vc!==1?'s':''}` : ''}
+                  {myVote===p.id ? ' ✓' : ''}
+                  {isLeader && vc > 0 ? ' 🎯' : ''}
+                </span>
+              </button>
+              {vc > 0 && <div className="vote-bar" style={{width:`${pct}%`,marginTop:-4,marginBottom:6}}/>}
+            </div>
+          );
+        })}
+        {alivePlayers.length === 0 && <p className="muted">No players to vote for.</p>}
+      </div>
+
+      <div className="card">
+        <h3>Players</h3>
+        <ul className="plist">
+          {room.players.filter(p=>!p.isMod).map(p => (
+            <li key={p.id}>
+              <span>{p.name}{p.id===myId?' (you)':''}</span>
+              {p.alive ? <span className="pill pill-alive">alive</span> : <span className="pill pill-dead">dead</span>}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="card center">
+        <p className="muted" style={{fontSize:12}}>Discuss and vote. The moderator will confirm the elimination and start the next night.</p>
+      </div>
+    </div>
+  );
+}
+
+/* ── Role card with reveal toggle ── */
+function RoleCard({role, compact}) {
+  const [visible, setVisible] = useState(false);
+  const info = RI[role];
+  if (!info) return null;
+
+  return (
+    <div style={{marginBottom:compact?12:14}}>
+      <div className="role-wrapper">
+        <div
+          className={`role-card ${info.team==='mafia'?'role-mafia':'role-town'}`}
+          style={{...(compact?{padding:'18px 20px'}:{}), opacity: visible ? 1 : 0.08, marginBottom: 0}}
+        >
+          <div style={{fontSize:compact?28:42}}>{info.emoji}</div>
+          <div className="muted" style={{fontSize:10,letterSpacing:2,textTransform:'uppercase',marginTop:6}}>Your role</div>
+          <div style={{fontSize:compact?20:28,fontFamily:'Georgia,serif',margin:'6px 0',color:info.color}}>{info.label}</div>
+          {!compact && <p style={{opacity:.85,fontSize:14,lineHeight:1.6}}>{info.desc}</p>}
+        </div>
+        {!visible && (
+          <div className="role-reveal-overlay" onClick={()=>setVisible(true)}>
+            <span>🔒</span>
+            <p>Tap to reveal your role</p>
+          </div>
+        )}
+      </div>
+      <button className="btn-reveal" onClick={()=>setVisible(v=>!v)}>
+        {visible ? '🙈 Hide role' : '👁 Reveal role'}
+      </button>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('app')).render(<App/>);
+</script>
+</body>
+</html>
