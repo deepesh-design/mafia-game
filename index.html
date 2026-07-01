@@ -33,7 +33,7 @@
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
-      padding: 0 16px 100px;
+      padding: 28px 16px 100px;
     }
 
     h1, h2, h3, h4 {
@@ -623,7 +623,10 @@ function App() {
   const [myName, setMyName] = useState('');
   const [nameInput, setNameInput] = useState('');
   const [nameErr, setNameErr] = useState('');
+  const [joinLink, setJoinLink] = useState('');
+  const [joinLinkErr, setJoinLinkErr] = useState('');
   const [showVoice, setShowVoice] = useState(false);
+  const [showExitModal, setShowExitModal] = useState(false);
   const modFlag  = useRef(false);
   const codeRef  = useRef(null);
   const prevTick = useRef(0);
@@ -632,7 +635,7 @@ function App() {
     const urlRoom = qp('room');
     if (urlRoom) {
       const r = getRoom(urlRoom);
-      if (!r) { setCodeErr('Room not found.'); setScreen('home'); return; }
+      if (!r) { setJoinLinkErr('Room not found.'); setScreen('home'); return; }
       codeRef.current = urlRoom;
       const me = r.players.find(p => p.id === myId);
       if (me) {
@@ -676,19 +679,48 @@ function App() {
     const u = new URL(location);
     u.searchParams.delete('room');
     history.replaceState({}, '', u);
-    setRoom(null); setScreen('home'); setNameErr('');
-    setNameInput('');
+    setRoom(null); setScreen('home'); setNameErr(''); setJoinLink(''); setJoinLinkErr('');
+    setNameInput(''); setShowExitModal(false);
     codeRef.current = null; modFlag.current = false;
   }
 
   function exitGame() {
-    const code = codeRef.current;
-    if (!code) { goHome(); return; }
-    if (modFlag.current) {
-      if (!confirm('You are the moderator. Leaving will keep the room but remove your controls. Exit anyway?')) return;
-    }
+    if (!codeRef.current) { goHome(); return; }
+    if (modFlag.current) { setShowExitModal(true); return; }
     upd(r => { r.players = r.players.filter(p => p.id !== myId); return r; });
     goHome();
+  }
+
+  function leaveRoom() {
+    upd(r => { r.players = r.players.filter(p => p.id !== myId); return r; });
+    goHome();
+  }
+
+  function closeRoom() {
+    try { localStorage.removeItem(rKey(codeRef.current)); } catch {}
+    goHome();
+  }
+
+  function joinByPastedLink() {
+    setJoinLinkErr('');
+    if (!nameInput.trim()) { setNameErr('Enter your name'); return; }
+    const raw = joinLink.trim();
+    if (!raw) { setJoinLinkErr('Paste the invite link here'); return; }
+    let code = null;
+    try { code = new URL(raw).searchParams.get('room'); } catch {}
+    if (!code) code = raw; // treat as bare token
+    const r = getRoom(code);
+    if (!r) { setJoinLinkErr('Link is invalid or the room no longer exists'); return; }
+    if (r.phase !== 'lobby') { setJoinLinkErr('That game has already started'); return; }
+    if (r.players.length >= 10) { setJoinLinkErr('Room is full (10 max)'); return; }
+    if (r.players.some(p => p.name.toLowerCase() === nameInput.trim().toLowerCase())) { setNameErr('Name already taken in this room'); return; }
+    r.players.push({id:myId, name:nameInput.trim(), role:null, alive:true, isMod:false});
+    saveRoom(r);
+    codeRef.current = code;
+    setQP('room', code);
+    setMyName(nameInput.trim());
+    setRoom(r);
+    setScreen('player');
   }
 
   function createRoom() {
@@ -750,10 +782,21 @@ function App() {
         {nameErr && <p style={{color:'var(--red2)',fontSize:11,marginTop:6,letterSpacing:.5}}>{nameErr}</p>}
       </div>
 
-      <div className="card" style={{marginBottom:16,borderTop:'none'}}>
+      <div className="card" style={{marginBottom:0,borderTop:'none'}}>
         <p className="eyebrow" style={{marginBottom:6}}>Host</p>
         <p className="muted" style={{fontSize:12,marginBottom:8}}>Control every phase as moderator. Players join via your private invite link.</p>
         <button className="btn-primary" onClick={createRoom}>Create Room</button>
+      </div>
+
+      <div className="card" style={{marginBottom:16,borderTop:'none'}}>
+        <p className="eyebrow" style={{marginBottom:6}}>Join a Room</p>
+        <p className="muted" style={{fontSize:12,marginBottom:0}}>Paste the invite link sent by your host.</p>
+        <input value={joinLink} onChange={e=>{setJoinLink(e.target.value);setJoinLinkErr('');}}
+          placeholder="Paste invite link here"
+          onKeyDown={e=>e.key==='Enter'&&joinByPastedLink()}
+          style={{marginTop:10,borderColor:joinLinkErr?'var(--red2)':''}}/>
+        {joinLinkErr && <p style={{color:'var(--red2)',fontSize:11,marginTop:6,letterSpacing:.5}}>{joinLinkErr}</p>}
+        <button className="btn-secondary" onClick={joinByPastedLink}>Join Room</button>
       </div>
 
       <p style={{textAlign:'center',fontSize:10,letterSpacing:3,color:'var(--muted)',marginTop:8,textTransform:'uppercase'}}>
@@ -785,6 +828,33 @@ function App() {
       {showVoice && <VoiceModal onClose={()=>setShowVoice(false)} onSelect={name=>{
         upd(r => { r.voiceName = name; return r; });
       }}/>}
+
+      {showExitModal && (
+        <div className="modal-overlay" onClick={()=>setShowExitModal(false)}>
+          <div className="modal-box" onClick={e=>e.stopPropagation()}>
+            <div className="modal-head">
+              <p className="eyebrow">Moderator Exit</p>
+              <h3>What would you like to do?</h3>
+            </div>
+            <div style={{padding:'8px 0'}}>
+              <button className="voice-option" style={{width:'100%',flexDirection:'column',alignItems:'flex-start',gap:4,padding:'18px 22px'}}
+                onClick={leaveRoom}>
+                <span style={{fontSize:14,color:'var(--text)',fontFamily:'Playfair Display,serif'}}>Leave the Room</span>
+                <span style={{fontSize:11,color:'var(--muted)',letterSpacing:.5,textTransform:'none',fontWeight:400}}>The game continues. Your moderator controls are removed.</span>
+              </button>
+              <button className="voice-option" style={{width:'100%',flexDirection:'column',alignItems:'flex-start',gap:4,padding:'18px 22px',borderBottom:'none'}}
+                onClick={closeRoom}>
+                <span style={{fontSize:14,color:'var(--red2)',fontFamily:'Playfair Display,serif'}}>Close the Room</span>
+                <span style={{fontSize:11,color:'var(--muted)',letterSpacing:.5,textTransform:'none',fontWeight:400}}>Ends the game for everyone and deletes the room.</span>
+              </button>
+            </div>
+            <div className="modal-foot">
+              <button className="btn-secondary" style={{marginTop:0}} onClick={()=>setShowExitModal(false)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {screen === 'mod' && <ModView room={room} myId={myId} upd={upd} joinUrl={location.href}
         onVoice={()=>setShowVoice(true)} onExit={exitGame}/>}
       {screen === 'player' && <PlayerView room={room} myId={myId} upd={upd} onExit={exitGame}/>}
