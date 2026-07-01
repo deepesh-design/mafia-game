@@ -474,8 +474,7 @@ const RI = {
 };
 const uid = () => Math.random().toString(36).slice(2,9);
 const makeCode = () => Array.from(crypto.getRandomValues(new Uint8Array(9))).map(b=>b.toString(36).padStart(2,'0')).join('').slice(0,16);
-const ALPHA = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
-const makeShortCode = () => Array.from(crypto.getRandomValues(new Uint8Array(6))).map(b=>ALPHA[b%ALPHA.length]).join('');
+const makeShortCode = () => Array.from(crypto.getRandomValues(new Uint8Array(6))).map(b=>(b%10).toString()).join('');
 function findRoomByShortCode(sc) {
   const upper = sc.toUpperCase();
   for (let i = 0; i < localStorage.length; i++) {
@@ -660,7 +659,6 @@ function App() {
   const [joinLink, setJoinLink] = useState('');
   const [joinLinkErr, setJoinLinkErr] = useState('');
   const [showVoice, setShowVoice] = useState(false);
-  const [showExitModal, setShowExitModal] = useState(false);
   const modFlag  = useRef(false);
   const codeRef  = useRef(null);
   const prevTick = useRef(0);
@@ -690,7 +688,7 @@ function App() {
     if (!codeRef.current || screen === 'home' || screen === 'join-link' || screen === 'loading') return;
     const iv = setInterval(() => {
       const r = getRoom(codeRef.current);
-      if (!r) return;
+      if (!r) { goHome(); return; }
       syncVoiceFromRoom(r);
       if (r.speakTick !== prevTick.current) {
         prevTick.current = r.speakTick;
@@ -714,24 +712,20 @@ function App() {
     u.searchParams.delete('room');
     history.replaceState({}, '', u);
     setRoom(null); setScreen('home'); setNameErr(''); setJoinLink(''); setJoinLinkErr('');
-    setNameInput(''); setShowExitModal(false);
+    setNameInput('');
     codeRef.current = null; modFlag.current = false;
   }
 
+  // Moderator exiting ends the game for everyone — deletes the room so every
+  // polling client (see the interval above) notices it's gone and returns home.
   function exitGame() {
     if (!codeRef.current) { goHome(); return; }
-    if (modFlag.current) { setShowExitModal(true); return; }
+    if (modFlag.current) {
+      try { localStorage.removeItem(rKey(codeRef.current)); } catch {}
+      goHome();
+      return;
+    }
     upd(r => { r.players = r.players.filter(p => p.id !== myId); return r; });
-    goHome();
-  }
-
-  function leaveRoom() {
-    upd(r => { r.players = r.players.filter(p => p.id !== myId); return r; });
-    goHome();
-  }
-
-  function closeRoom() {
-    try { localStorage.removeItem(rKey(codeRef.current)); } catch {}
     goHome();
   }
 
@@ -867,32 +861,6 @@ function App() {
       {showVoice && <VoiceModal onClose={()=>setShowVoice(false)} onSelect={name=>{
         upd(r => { r.voiceName = name; return r; });
       }}/>}
-
-      {showExitModal && (
-        <div className="modal-overlay" onClick={()=>setShowExitModal(false)}>
-          <div className="modal-box" onClick={e=>e.stopPropagation()}>
-            <div className="modal-head">
-              <p className="eyebrow">Moderator Exit</p>
-              <h3>What would you like to do?</h3>
-            </div>
-            <div style={{padding:'8px 0'}}>
-              <button className="voice-option" style={{width:'100%',flexDirection:'column',alignItems:'flex-start',gap:4,padding:'18px 22px'}}
-                onClick={leaveRoom}>
-                <span style={{fontSize:14,color:'var(--text)',fontFamily:'Playfair Display,serif'}}>Leave the Room</span>
-                <span style={{fontSize:11,color:'var(--muted)',letterSpacing:.5,textTransform:'none',fontWeight:400}}>The game continues. Your moderator controls are removed.</span>
-              </button>
-              <button className="voice-option" style={{width:'100%',flexDirection:'column',alignItems:'flex-start',gap:4,padding:'18px 22px',borderBottom:'none'}}
-                onClick={closeRoom}>
-                <span style={{fontSize:14,color:'var(--red2)',fontFamily:'Playfair Display,serif'}}>Close the Room</span>
-                <span style={{fontSize:11,color:'var(--muted)',letterSpacing:.5,textTransform:'none',fontWeight:400}}>Ends the game for everyone and deletes the room.</span>
-              </button>
-            </div>
-            <div className="modal-foot">
-              <button className="btn-secondary" style={{marginTop:0}} onClick={()=>setShowExitModal(false)}>Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {screen === 'mod' && <ModView room={room} myId={myId} upd={upd} joinUrl={location.href}
         onVoice={()=>setShowVoice(true)} onExit={exitGame}/>}
@@ -1080,14 +1048,8 @@ function ModNight({room, upd, onVoice, onExit}) {
   const stepIdx = room.nightStep || 0;
   const step    = script[stepIdx] || {};
   const isLast  = stepIdx >= script.length - 1;
-  const spoken  = useRef(-1);
-
-  useEffect(() => {
-    if (stepIdx !== spoken.current) {
-      spoken.current = stepIdx;
-      if (step.speak) speak(step.speak);
-    }
-  }, [stepIdx]);
+  // Narration is spoken from the App-level polling loop, keyed off room.speakTick —
+  // speaking it again here too raced with that same line and cut it off mid-word.
 
   function prev() {
     if (stepIdx === 0) return;
