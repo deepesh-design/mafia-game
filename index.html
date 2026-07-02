@@ -445,6 +445,18 @@ function speak(text) {
   } catch {}
 }
 
+// Speech tied to room.speakTick, de-duplicated across the synchronous "the actor who
+// just clicked" path and the async polling path (see upd() and the poll loop below).
+// Safari/iOS silently drops speechSynthesis.speak() calls that aren't made directly
+// inside a user-gesture call stack, so the actor's own client must speak synchronously
+// rather than waiting on the poll — but other clients still need the poll to hear it.
+let lastSpokenTick = -1;
+function speakForTick(tick, text) {
+  if (tick === undefined || tick === lastSpokenTick) return;
+  lastSpokenTick = tick;
+  if (text) speak(text);
+}
+
 /* ── Night script builder ── */
 function buildScript(round, hasDoc, hasDet) {
   const s = [
@@ -661,7 +673,6 @@ function App() {
   const [showVoice, setShowVoice] = useState(false);
   const modFlag  = useRef(false);
   const codeRef  = useRef(null);
-  const prevTick = useRef(0);
 
   useEffect(() => {
     const urlRoom = qp('room');
@@ -690,10 +701,7 @@ function App() {
       const r = getRoom(codeRef.current);
       if (!r) { goHome(); return; }
       syncVoiceFromRoom(r);
-      if (r.speakTick !== prevTick.current) {
-        prevTick.current = r.speakTick;
-        if (r.speakText) speak(r.speakText);
-      }
+      speakForTick(r.speakTick, r.speakText);
       setRoom({...r});
     }, 800);
     return () => clearInterval(iv);
@@ -705,6 +713,9 @@ function App() {
     const next = fn(r);
     saveRoom(next);
     setRoom({...next});
+    // Speak synchronously, inside whatever click handler called upd() — this is
+    // what keeps narration playing on browsers that require a user gesture.
+    speakForTick(next.speakTick, next.speakText);
   }
 
   function goHome() {
@@ -714,6 +725,7 @@ function App() {
     setRoom(null); setScreen('home'); setNameErr(''); setJoinLink(''); setJoinLinkErr('');
     setNameInput('');
     codeRef.current = null; modFlag.current = false;
+    lastSpokenTick = -1;
   }
 
   // Moderator exiting ends the game for everyone — deletes the room so every
